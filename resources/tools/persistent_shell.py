@@ -3,18 +3,20 @@ import threading
 import queue
 import time
 import os
-
+from config.logger import setup_logger
 
 class PersistentShell:
     def __init__(self):
         self.process = None
         self.output_queue = queue.Queue()
         self.is_alive = False
+        self.logger = setup_logger("PersistentShell")
 
     def create_terminal(self):
         """
         Creates a persistent terminal environment (shell).
         """
+        self.logger.info("Creating new terminal session...")
         # Use a shell that supports interactive mode well. 
         # /bin/bash or /bin/zsh is common on macOS/Linux.
         shell = os.environ.get('SHELL', '/bin/bash')
@@ -33,7 +35,7 @@ class PersistentShell:
         # Start a thread to read output continuously
         self.reader_thread = threading.Thread(target=self._read_output, daemon=True)
         self.reader_thread.start()
-        
+        self.logger.info(f"Terminal session started (PID: {self.process.pid})")
         return self.process.pid
 
     def _read_output(self):
@@ -61,8 +63,11 @@ class PersistentShell:
         We use a unique delimiter/sentinel string to detect completion.
         """
         if not self.is_alive or not self.process:
+            self.logger.error("Attempted to execute command but terminal is not running.")
             raise RuntimeError("Terminal is not running. Call create_terminal() first.")
 
+        self.logger.info(f"Executing command: {command}")
+        
         # Create a unique sentinel to mark the end of the command output
         sentinel = f"__CMD_DONE_{int(time.time())}__"
         
@@ -97,13 +102,16 @@ class PersistentShell:
                     # Strip the sentinel
                     result = current_output.replace(sentinel, "").strip()
                     # Also strip the trailing newline from echo if present
+                    self.logger.info(f"Command output: {result}")
                     return result
                     
             except queue.Empty:
                 # Timeout occurred - maybe command is taking too long or no output
                 # For long running commands, this simple logic might need adjustment (e.g. callback)
                 # For now, return what we have
-                return "".join(output_buffer)
+                result = "".join(output_buffer)
+                self.logger.warning(f"Command execution timed out or no output received. Partial output: {result}")
+                return result
 
     def close_terminal(self):
         """
@@ -120,25 +128,6 @@ class PersistentShell:
                 
             self.process.terminate()
             self.process.wait()
+            self.logger.info("Terminal session closed.")
             self.process = None
-
-# Example usage (commented out to allow import)
-# if __name__ == "__main__":
-#     shell_session = PersistentShell()
-#     shell_session.create_terminal()
-#     print("--- Executing: pwd ---")
-#     print(shell_session.execute_command("pwd"))
-    
-#     print("\n--- Executing: cd .. ---")
-#     print(shell_session.execute_command("cd .."))
-    
-#     print("\n--- Executing: pwd (should be parent dir) ---")
-#     print(shell_session.execute_command("pwd"))
-    
-#     print("\n--- Executing: export TEST_VAR=123 ---")
-#     print(shell_session.execute_command("export TEST_VAR=123"))
-    
-#     print("\n--- Executing: echo $TEST_VAR (should be 123) ---")
-#     print(shell_session.execute_command("echo $TEST_VAR"))
-    
-#     shell_session.close_terminal()  
+            
