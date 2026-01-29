@@ -11,9 +11,9 @@ class Agent:
         self.tool_executer = tool_executer 
         self.shell = shell
         self.messages = []
+        self.messages.append({"role": "system", "content": self.instruction})
 
     def run(self, query: str):
-        self.messages.append({"role": "system", "content": self.instruction})
         self.messages.append({"role": "user", "content": query})
         tools = []
         for tool_name in self.tool_name_list:
