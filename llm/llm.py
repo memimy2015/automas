@@ -6,9 +6,7 @@ api_key = os.environ.get("ARK_API_KEY")
 model = os.environ.get("MODEL")
 
 client = Ark(   
-    base_url="https://ark.cn-beijing.volces.com/api/v3",  
-    # base_url="https://api.deepseek.com/v1", 
-    # 环境变量中配置您的API Key 
+    base_url="https://ark.cn-beijing.volces.com/api/v3",
     api_key=api_key, 
 )
 

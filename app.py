@@ -6,5 +6,5 @@ from resources.tools.persistent_shell import PersistentShell
 shell = PersistentShell()
 tool_executer = ToolExecuter()
 agent = Agent(instruction="You are a helpful assistant.", tool_name_list=["command"], tool_executer=tool_executer, shell=shell)
-res = agent.run("帮我看一下当前目录都有哪些文件")
+res = agent.run("https://mp.weixin.qq.com/s/qbXm1Vq7dc_2KPOJerZUqw 总结一下这个内容")
 print(res)

@@ -1,7 +1,9 @@
 from resources.tools.persistent_shell import PersistentShell
+from resources.tools.skill_tool import get_skill_list
 import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call
+from agent.prompt import render
 
 
 class Agent:
@@ -11,7 +13,9 @@ class Agent:
         self.tool_executer = tool_executer 
         self.shell = shell
         self.messages = []
-        self.messages.append({"role": "system", "content": self.instruction})
+        prompt = render(instruction, get_skill_list())
+        print(f"agent system prompt: {prompt}")
+        self.messages.append({"role": "system", "content": prompt})
 
     def run(self, query: str):
         self.messages.append({"role": "user", "content": query})

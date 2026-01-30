@@ -36,6 +36,7 @@ class PersistentShell:
         self.reader_thread = threading.Thread(target=self._read_output, daemon=True)
         self.reader_thread.start()
         self.logger.info(f"Terminal session started (PID: {self.process.pid})")
+        print(f"Terminal session started (PID: {self.process.pid})")
         return self.process.pid
 
     def _read_output(self):
@@ -64,9 +65,11 @@ class PersistentShell:
         """
         if not self.is_alive or not self.process:
             self.logger.error("Attempted to execute command but terminal is not running.")
+            print("Attempted to execute command but terminal is not running.")
             raise RuntimeError("Terminal is not running. Call create_terminal() first.")
 
         self.logger.info(f"Executing command: {command}")
+        print(f"Executing command: {command}")
         
         # Create a unique sentinel to mark the end of the command output
         sentinel = f"__CMD_DONE_{int(time.time())}__"
@@ -103,6 +106,7 @@ class PersistentShell:
                     result = current_output.replace(sentinel, "").strip()
                     # Also strip the trailing newline from echo if present
                     self.logger.info(f"Command output: {result}")
+                    print(f"Command output: {result}")
                     return result
                     
             except queue.Empty:
