@@ -1,4 +1,4 @@
-from agent.agent import Agent
+from execution.agent.agent import Agent
 from resources.tools.tool_executer import ToolExecuter
 from resources.tools.persistent_shell import PersistentShell
 

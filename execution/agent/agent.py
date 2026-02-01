@@ -3,7 +3,7 @@ from resources.tools.skill_tool import get_skill_list
 import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call
-from agent.prompt import render
+from .prompt import render
 
 
 class Agent:
