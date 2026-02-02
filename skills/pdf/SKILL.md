@@ -120,6 +120,22 @@ if all_tables:
 
 ### reportlab - Create PDFs
 
+#### Chinese Processing
+```python
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+pdfmetrics.registerFont(TTFont("ChineseBold", "/System/Library/Fonts/STHeiti Medium.ttc"))  # 系统黑体粗体
+pdfmetrics.registerFont(TTFont("ChineseRegular", "/System/Library/Fonts/STHeiti Medium.ttc"))  # 系统黑体常规体
+
+# 自定义样式
+styles.add(ParagraphStyle(name='CustomTitle', fontName='ChineseBold', fontSize=20, alignment=1, spaceAfter=20, textColor=colors.darkblue))
+styles.add(ParagraphStyle(name='CustomHeading1', fontName='ChineseBold', fontSize=16, spaceBefore=15, spaceAfter=10, textColor=colors.darkred))
+styles.add(ParagraphStyle(name='CustomHeading2', fontName='ChineseBold', fontSize=14, spaceBefore=12, spaceAfter=8, textColor=colors.darkgreen))
+styles.add(ParagraphStyle(name='CustomBullet', fontName='ChineseRegular', fontSize=12, spaceBefore=5, spaceAfter=5, leftIndent=20))
+styles.add(ParagraphStyle(name='CustomNormal', fontName='ChineseRegular', fontSize=12, spaceBefore=5, spaceAfter=5))
+```
+
 #### Basic PDF Creation
 ```python
 from reportlab.lib.pagesizes import letter

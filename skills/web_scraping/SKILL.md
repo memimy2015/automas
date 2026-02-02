@@ -1,6 +1,6 @@
 ---
 name: web-scraping
-description: Webpage content can be retrieved based on the webpage URL.
+description: Webpage content can be retrieved based on the webpage URL. Including links to WeChat Official Accounts and other platforms.
 ---
 
 # web-scraping
