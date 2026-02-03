@@ -1,11 +1,11 @@
 from execution.agent.agent import Agent
-from execution.agent.ClaimerAgent import ClaimerAgent
-from execution.agent.PlannerAgent import PlannerAgent
+from control.ClaimerAgent import ClaimerAgent
+from control.PlannerAgent import PlannerAgent
 from resources.tools.tool_executer import ToolExecuter
 from resources.tools.persistent_shell import PersistentShell
 from resources.tools.file_operation import write_file, read_file
-from resources.tools.notifier import Notifier
-from resources.tools.progress_manager import ProgressManager
+from control.notifier import Notifier
+from control.progress_manager import ProgressManager
 
 TEST_CASE_1="https://mp.weixin.qq.com/s/qbXm1Vq7dc_2KPOJerZUqw 对网页内容做总结，提取摘要，输出pdf文件，格式美观"
 TEST_CASE_2="我想去旅游，帮我做一下规划吧"

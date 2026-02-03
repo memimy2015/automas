@@ -4,8 +4,8 @@ import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call, llm_call_json_schema
 from llm.json_schemas import ProacvtiveQuery, ClaimerSchema
-from .prompt import render
-from resources.tools.notifier import Notifier
+from execution.agent.prompt import render
+from .notifier import Notifier
 
 def access_knowledgeDB():
     return "None"

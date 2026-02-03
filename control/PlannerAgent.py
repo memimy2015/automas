@@ -3,8 +3,8 @@ from resources.tools.skill_tool import get_skill_list
 import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call, llm_call_json_schema
-from .prompt import render
-from resources.tools.progress_manager import ProgressManager
+from execution.agent.prompt import render
+from .progress_manager import ProgressManager
 from typing import Optional
 from llm.json_schemas import Subtask, SubtaskSteps, PlannedTasks
 
