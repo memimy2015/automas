@@ -7,7 +7,10 @@ URL = "https://open.feedcoopapi.com/search_api/web_search"
 def search(query):
     try:
         # Define headers
-        headers = {"Authorization": "Bearer 9zMfv8iTYvX85EI0Vyosi0BYMXZ0TBkU"}        
+        api_key = os.environ.get("SEARCH_API_KEY")
+        headers = {"Authorization": f"Bearer {api_key}"}        
+        if not api_key:
+            return {"error": "FEEDCOOP_API_KEY environment variable not set"}
         
         # Send POST request
         body = {
