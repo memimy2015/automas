@@ -29,7 +29,7 @@ class ToolExecuter:
             "type": "function",
             "function": {
                 "name": "write_tmp_file",
-                "description": "写入临时文件，包括txt，html，markdown，py等文本内容，主要是为了后续的shell命令执行",
+                "description": "写入临时文件，包括txt，html，markdown，py等文本内容，主要是为了后续的shell命令执行。如果需要修改文件内容，需要先删除文件，再重新写入完整内容。",
                 "parameters": {
                     "type": "object",
                     "properties": {

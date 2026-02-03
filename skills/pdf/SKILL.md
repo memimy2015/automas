@@ -121,6 +121,7 @@ if all_tables:
 ### reportlab - Create PDFs
 
 #### Chinese Processing
+- For Chinese fonts, only use the STHeiti Medium.ttc font.
 ```python
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
