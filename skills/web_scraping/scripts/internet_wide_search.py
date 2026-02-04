@@ -1,6 +1,7 @@
 import requests
 import json
 import sys
+import os
 
 URL = "https://open.feedcoopapi.com/search_api/web_search"
 
