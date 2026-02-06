@@ -1,3 +1,4 @@
+from .json_schemas import FactoryOutput
 from volcenginesdkarkruntime import Ark
 import os
 from pydantic import BaseModel
@@ -15,6 +16,8 @@ registered_schema = {}
 
 registered_schema["Claimer"] = ClaimerSchema
 registered_schema["Planner"] = PlannedTasks
+registered_schema["PromptEngineer"] = FactoryOutput
+
 
 def llm_call(messages: list, tools: list):
     """

@@ -1,12 +1,13 @@
+from control.context_manager import ContextManager
 from resources.tools.persistent_shell import PersistentShell
 from resources.tools.skill_tool import get_skill_list
 import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call, llm_call_json_schema
 from execution.agent.prompt import render
-from .progress_manager import ProgressManager
 from typing import Optional
 from llm.json_schemas import Subtask, SubtaskSteps, PlannedTasks
+from .notifier import Notifier
 
 CN_PROMPT = """
 你是一个任务规划专家，现在需要根据用户提出的具体问题，按照“问题拆解→子问题验证→流程优化”的逻辑，将问题分解为更细致、无遗漏的子问题（需覆盖问题的核心要素、关联条件及潜在边界），并为每个子问题设计顺畅且正确的解决流程：首先明确子问题的目标与输入输出要求，其次规划分步骤的执行逻辑（含关键判断节点与应对方案），最后说明子问题间的衔接关系，确保整体流程可落地、无逻辑断层。
@@ -22,35 +23,39 @@ For each sub-problem, you need to design a smooth and correct solution process, 
 
 You will serve for following usages:
 - Given a user query, do planning for it and then creates a hierarchical task list and next step to do.
-- Given a execution result from agent, update the status of task list and do some adjustment if needed, then dispatch next step to agent.
+- Given a execution result from agent, update the task list and do some adjustment about planning if needed, then dispatch next step to agent.
+- Given user chat history, current task list and overall goal, do planning for the user query, if there is no adjustment about planning, dispatch next step to agent, otherwise, set need_replan to True and give replan_reason and task_specification, then user will provide more information according to task_specification provided by you or do the judgment and this will be demonstrated in section 'Chat History', latest message will be the last one. Once you receive user messages, try to do planning again.
 
-# History
+
+# Specific requirements
+- You must not edit the status or finished state or is_mission_accomplished state of the sub-objective or objective in the task list, if there is no adjustment about planning. And if you adjust the planning, you must be careful to set the finished state, is_mission_accomplished state and status correctly. Caution! status only got four choices, ["pending", "completed", "stopped", "cancelled"].
+- You need to attach the resource reference to the task list. 
+- If there are available sources that helps to accomplish the sub-objective or objective, corresponding objective must have a description and a URI to the source of the information. The URI should be a valid url or file path. And type in ResourceReference object must be one of from_user or from_memorybase or from_agent, you will be given the type of source reference, and you should not edit this field.
+- If the user provides multiple links or file paths, you must add them to the json output in the form of a list of ResourceReference objects.
+- Status for each sub-objective in the task list is one of pending, completed, stopped, cancelled.
+- Name of objective can be a description of the objective.
+- Sub-objective must be executable step rather than summary or description.
+- Next step must be in the form of NextStep object.
+- Next step must contain objective_index and sub_objective_index, and both must be non-negative integers and less than the number of objectives and sub-objectives respectively.
+- Next step is the first sub-objective with pending status.
+- Milestones must be in the form of strings, and each milestone must be a description of the milestone, you just need to read this section to catch up with current accomplishments and do not modify it.
+- Overall goal must be in the form of strings, and it must be the same as overall goal in latest task, if it is not empty and there is no need to change it.
+- If there is a critical problem in the task, you must update the overall goal to reflect the problem, and set need_replan to True to ask user for more information and then fill them into task_specification. You must also provide a reason for replanning in replan_reason field. Once user gives more information, you must repeat the planning process and if there is no need to re, you just need to repeat it and decide next steps to do.
+
+# Chat History
 {}
 
-# Task list example
-
-- [x] **Objective 1: Perform Initial Research**
-  - [x] Sub-objective 1.1: Research top attractions
-  - [x] Sub-objective 1.2: Investigate transportation options
-- [ ] **Objective 2: Finalize Itinerary and Budget**
-  - [ ] Sub-objective 2.1: Research hotel accommodations
-  - [ ] Sub-objective 2.2: Calculate total estimated budget
-  - [ ] Sub-objective 2.3: Create final itinerary document
- 
-x in brackets means this objective or sub-objective is accomplished
-empty brackets means this objective or sub-objective needs to be done
-
-# Task list
-Task list is in json format
-If current task list is empty, you need to perform planning for global objective given by user.
-If current task list already has items, you need to check history list and give an updated task list according to previous accomplishments if changes is necessary, and then decide what to do next.
-If there is no need to update task list, you just need to repeat it and decide next steps to do.
+# Task 
+Task is in Markdown format.
+If current task is empty, you need to perform planning for overall goal given by user.
+If current task already has items, you need to check history list and give an updated task list according to previous accomplishments if changes is necessary, and then decide what to do next.
+If there is no need to update task, you just need to repeat it and decide next steps to do.
 When deciding next executable step, you must attach specification and details to it so as to let downstream executor works better.
-current task list:
+latest task list:
 {}
 
 # Overall goal
-Goal will be given by user.
+Current overall goal: {}
 
 # Output format
 JSON format
@@ -58,45 +63,43 @@ JSON format
 """
 
 class PlannerAgent:
-    def __init__(self, progress_manager: ProgressManager):
+    def __init__(self, context_manager: ContextManager, notifier: Notifier):
         self.messages = []
-        self.progress_manager = progress_manager
-        self.history = []
+        self.context_manager = context_manager
+        self.notifier = notifier
         self.goal = None
-        prompt = DEFAULT_INSTRUCTION.format(self.history, progress_manager.formulate_progress())
+        prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
         print(f"agent system prompt: {prompt}")
-        # self.messages.append({"role": "system", "content": prompt})
+        self.messages.append({"role": "system", "content": prompt})
+        self.messages.append({"role": "user", "content": "Now start planning the task."})
 
-    def run(self, query: str, prev_msg_list: Optional[list] = None):
+
+
+    def run(self):
         """
-        执行
+        执行规划任务
         Args:
-            query (str): 给planner的输入
-            prev_msg_list (Optional[list], optional):  Defaults to None. 
-            只用于从Claimer模块获取任务澄清阶段的说明
+            None
         """
         print("PlannerAgent Started")
         # Get updated task status
-        updated_prompt = DEFAULT_INSTRUCTION.format(self.history, self.progress_manager.formulate_progress())
-        if prev_msg_list:
-            self.messages = prev_msg_list
-            self.messages = [{"role": "system", "content": updated_prompt}] + self.messages
-        else:
-            self.messages[0] = {"role": "system", "content": updated_prompt}
-            self.messages.append({"role": "user", "content": query})
-        
+        self._prepare_context()
         # Planning
         finish_reason, resp = llm_call_json_schema(self.messages, [], "Planner")
         print(resp.model_dump_json(indent=2))
+        self.context_manager.set_task_status(resp)
+        # 改为if + 递归调用
+        while resp.need_replan:
+            for model_query in resp.task_specification:
+                user_resp = self.notifier.call_user("[Planner]" + model_query.query)
+            self._prepare_context()
+            finish_reason, resp = llm_call_json_schema(self.messages, [], "Planner")
+            print(resp.model_dump_json(indent=2))
+            self.context_manager.set_task_status(resp)
         print("PlannerAgent Finished")
         return self.messages[0], self.messages[1:]
         
-    def update_overall_goal(self, new_goal: str):
-        old = self.goal
-        self.goal = new_goal
-        print(f"====GOAL CHANGED====")
-        print(f"{old} -> {new_goal}")
-        
-    def update_history(self, new_history: str):
-        print(f"New history updated: {new_history}")
-        self.history.append(new_history)
+    def _prepare_context(self):
+        updated_prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
+        self.messages[0] = {"role": "system", "content": updated_prompt}
+        self.messages[1] = {"role": "user", "content": "Now start planning the task."}      

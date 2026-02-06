@@ -4,16 +4,16 @@ import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call
 from .prompt import render
-
+from typing import Dict, Any
 
 class Agent:
-    def __init__(self, instruction: str, tool_name_list: list, tool_executer: ToolExecuter, shell: PersistentShell=None):
+    def __init__(self, instruction: Dict[str, Any], tool_name_list: list, tool_executer: ToolExecuter, shell: PersistentShell=None):
         self.instruction = instruction
         self.tool_name_list = tool_name_list
         self.tool_executer = tool_executer 
         self.shell = shell
         self.messages = []
-        prompt = render(instruction, get_skill_list())
+        prompt = render(**instruction)
         print(f"agent system prompt: {prompt}")
         self.messages.append({"role": "system", "content": prompt})
 

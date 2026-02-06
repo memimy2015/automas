@@ -1,3 +1,5 @@
+from llm.json_schemas import ResourceReference
+from control.context_manager import ContextManager
 from execution.agent.agent import Agent
 from control.ClaimerAgent import ClaimerAgent
 from control.PlannerAgent import PlannerAgent
@@ -15,17 +17,24 @@ TEST_CASE_5="解决这道题" # badcase
 
 shell = PersistentShell()
 tool_executer = ToolExecuter()
-notifier = Notifier()
-progress_manager = ProgressManager()
+# progress_manager = ProgressManager()
+context_manager = ContextManager()
+notifier = Notifier(context_manager)
+
+# for test only
+context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", pointer="https://www.my_company.com/report", type="from_memorybase")})
+context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", pointer="image.png", type="from_memorybase")})
+
+
 # agent = Agent(instruction="You are a helpful assistant.", tool_name_list=["command", "write_tmp_file", "read_tmp_file"], tool_executer=tool_executer, shell=shell)
-claim_agent = ClaimerAgent(notifier)
-plan_agent = PlannerAgent(progress_manager)
-sys_prompt, msg = claim_agent.run(TEST_CASE_5)
-_, msg = plan_agent.run("给出你的规划", prev_msg_list=msg)
+claim_agent = ClaimerAgent(notifier, context_manager)
+plan_agent = PlannerAgent(context_manager, notifier)
+sys_prompt, msg = claim_agent.run(TEST_CASE_4)
+_, msg = plan_agent.run()
 
 while True:
     query = input("模拟agent结果:\n")
     if query == "exit":
         break
-    plan_agent.run(query)
+    plan_agent.run()
     
