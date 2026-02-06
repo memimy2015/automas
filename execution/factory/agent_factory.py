@@ -39,7 +39,6 @@ class AgentFactory():
         self.default_tool_name_list = default_tool_name_list
         self.tool_executer = tool_executer
         self.shell = shell
-        self.current_subtask_index, self.current_subtask_step_index = self.context_manager._get_current_subtask_index()
         self.messages = [{"role": "system", "content": DEFAULT_INSTRUCTION.format("placeholder", "placeholder")}]
         self.messages.append({"role": "user", "content": "Placeholder"})
 
@@ -49,6 +48,7 @@ class AgentFactory():
         return Agent(instruction, tool_name_list, self.tool_executer, self.shell)
 
     def run(self, tool_name_list: list = None) -> Agent:
+        self.current_subtask_index, self.current_subtask_step_index = self.context_manager._get_current_indices()
         if tool_name_list is None:
             tool_name_list = self.default_tool_name_list
         formatted_subtask = self.context_manager.get_formatted_subtask(self.current_subtask_index)

@@ -127,18 +127,8 @@ class ContextManager:
                 
                 
         if task_status == "completed":
-            task.finished = (sub_idx + 1) == len(sub_objective.objective)
-            task.is_mission_accomplished = task.finished and (obj_idx + 1) == len(self.task_state.tasks)
-
-
-
-
-
-
-
-
-
-
+            task.finished = all(obj.status == "completed" for obj in task.objective)
+            self.task_state.is_mission_accomplished = all(t.finished for t in self.task_state.tasks)
 
     def set_next_step(self, objective_index: int, sub_objective_index: int):
         """
@@ -164,7 +154,10 @@ class ContextManager:
         """
         Delete the available resources from the context manager.
         """
-        self.available_resources -= resources.keys()
+        pop_key = resources.keys()
+        for k in pop_key:
+            if k in self.available_resources.keys():
+                self.available_resources.pop(k)
         
     def add_dialogue(self, dialogue: Dict[str, Any]):
         """
