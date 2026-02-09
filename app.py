@@ -50,7 +50,7 @@ while not is_accomplished:
     formatted_subtask_step = context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)
     context_manager.add_dialogue({"role": "assistant", "content": formatted_subtask_step + "\n Response from agent: \n" + resp})
     
-    is_accomplished = plan_agent.run() if not context_manager.is_accomplished() else True
+    is_accomplished = context_manager.is_accomplished() or plan_agent.run()
 
 print("All tasks accomplished.")
 print("=====Overview=====")
