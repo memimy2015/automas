@@ -222,4 +222,9 @@ class ContextManager:
         """
         return self.task_state.tasks[task_index].objective[step_index]
     
+    def is_accomplished(self) -> bool:
+        """
+        Return the overall task completion status.
+        """
+        return self.task_state.is_mission_accomplished
 

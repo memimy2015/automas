@@ -67,9 +67,9 @@ class ClaimerAgent:
         print(f"Refined objective: \n {resp.refined_objective}")
         self.messages.append({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"})
         self.context_manager.update_overall_goal(resp.refined_objective)
-        for source_ref in resp.resource_reference:
-            self.messages.append({"role": "user", "content": f"资源描述：{source_ref.description} | 资源URI: {source_ref.URI} | 资源来源类型(type): {source_ref.type}"})
-            self.context_manager.add_available_resources({source_ref.description: source_ref})
+        for resource_ref in resp.resource_reference:
+            self.messages.append({"role": "user", "content": f"资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"})
+            self.context_manager.add_available_resources({resource_ref.description: resource_ref})
         for msg in self.messages[1:]:
             self.context_manager.add_dialogue(msg)
         print("=====ClaimerAgent Finished=====")
