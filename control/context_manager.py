@@ -107,6 +107,7 @@ class ContextManager:
                 sub_objective.execution_summary = task_summary
                 sub_objective.resource_reference.extend([v for v in files.values()])
                 self.add_available_resources(files)
+                print(f"Submitted to {obj_idx + 1}.{sub_idx + 1} {sub_objective.sub_objective_name}")
             else:
                 print("Invalid sub-objective index.")
                 raise ValueError("Invalid sub-objective index.")
