@@ -39,23 +39,18 @@ class ClaimerAgent:
         self.messages = []
         # prompt = DEFAULT_INSTRUCTION.format(access_knowledgeDB())
         prompt = DEFAULT_INSTRUCTION
-        print(f"agent system prompt: {prompt}")
         self.messages.append({"role": "system", "content": prompt})
         self.notifier = notifier
         self.context_manager = context_manager
 
     def run(self, query: str):
-        print(f'ClaimerAgent Started')
+        print("=====ClaimerAgent Started=====")
         if self.context_manager.get_available_resources():
             formatted_available_resources = self.context_manager.get_formatted_available_resources()
             self.messages.append({"role": "user", "content": formatted_available_resources})
         self.messages.append({"role": "user", "content": query})
-        print("===============")
-        print(self.messages)
-        print("===============")
         finish_reason, resp = llm_call_json_schema(self.messages, [], "Claimer")
         print(f'Finish Reason: {finish_reason}')
-        # resp = resp.model_dump_json(indent=2)
         # process json output
         while resp.need_more_info:
             i = 0
@@ -68,15 +63,16 @@ class ClaimerAgent:
                 self.messages.append({"role": "user", "content": user_resp})
             # self.messages.append({"role": "user", "content": "你还有想要我补充的吗，没有的话就下一步吧。"})
             finish_reason, resp = llm_call_json_schema(self.messages, [], "Claimer")
-        print(f"Source reference: \n {resp.source_reference}")
+        print(f"Source reference: \n {resp.resource_reference}")
         print(f"Refined objective: \n {resp.refined_objective}")
         self.messages.append({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"})
         self.context_manager.update_overall_goal(resp.refined_objective)
-        for source_ref in resp.source_reference:
+        for source_ref in resp.resource_reference:
             self.messages.append({"role": "user", "content": f"资源描述：{source_ref.description} | 资源URI: {source_ref.URI} | 资源来源类型(type): {source_ref.type}"})
             self.context_manager.add_available_resources({source_ref.description: source_ref})
-        print(f"Source reference: \n {resp.source_reference}")
-        print(f'ClaimerAgent Finished')
+        for msg in self.messages[1:]:
+            self.context_manager.add_dialogue(msg)
+        print("=====ClaimerAgent Finished=====")
         return self.messages[0], self.messages[1:]
         
         

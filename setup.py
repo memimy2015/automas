@@ -6,6 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         "volcengine-python-sdk",
+        "prompt_toolkit",
         # Add other dependencies here
     ],
 )

@@ -11,11 +11,18 @@ def update_progress(info: str):
     Args:
         info (str): crucial information, such as fatal error or a critical step to success
     """
-    context_manager.add_milestone(info)
+    print(f"Add milestone: {info}")
+    try:
+        context_manager.add_milestone(info)
+        success_msg = f"Add milestone {info} successfully."
+        return success_msg
+    except Exception as e:
+        error_msg = f"Failed to add milestone {info}. Error: {e}"
+        return error_msg
     
 def submit(task_name: str, task_summary: str, task_status: Literal["pending", "completed", "stopped", "cancelled"], resources: List[Dict[str, str]]):
     """
-    Submit a task with the given name, summary, status, and files.
+    Submit a task with the given name, summary, status, and resources.
 
     Args:
         task_name (str): the name of the task
@@ -29,4 +36,10 @@ def submit(task_name: str, task_summary: str, task_status: Literal["pending", "c
         resource["type"] = "from_agent"
         desc = resource["description"]
         new_files[desc] = ResourceReference(**resource)
-    context_manager.submit_sub_objective(task_summary, task_status, new_files)
+    try:
+        context_manager.submit_sub_objective(task_summary, task_status, new_files)
+        success_msg = f"Submit task {task_name} with summary {task_summary} and status {task_status} successfully."
+        return success_msg
+    except Exception as e:
+        error_msg = f"Failed to submit task {task_name} with summary {task_summary} and status {task_status}. Error: {e}"
+        return error_msg

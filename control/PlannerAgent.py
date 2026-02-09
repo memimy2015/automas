@@ -20,6 +20,7 @@ For each sub-problem, you need to design a smooth and correct solution process, 
 1. clarify the goal and input/output requirements of the sub-problem
 2. plan the step-by-step execution logic (including key judgment nodes and solutions)
 3. explain the connection between the sub-problems to ensure that the overall process is feasible and has no logical gaps.
+4. sub-objective must be clear and executable and do not have sub-objective with repeated content or obvious overlap, if there is, you can merge them into one sub-objective or let new sub-objective utilizes the existing one's content rather than creates it again.
 
 You will serve for following usages:
 - Given a user query, do planning for it and then creates a hierarchical task list and next step to do.
@@ -69,7 +70,6 @@ class PlannerAgent:
         self.notifier = notifier
         self.goal = None
         prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
-        print(f"agent system prompt: {prompt}")
         self.messages.append({"role": "system", "content": prompt})
         self.messages.append({"role": "user", "content": "Now start planning the task."})
 
@@ -81,14 +81,15 @@ class PlannerAgent:
         Args:
             None
         """
-        print("PlannerAgent Started")
+        print("=====PlannerAgent Started=====")
         # Get updated task status
         self._prepare_context()
+        
         # Planning
         finish_reason, resp = llm_call_json_schema(self.messages, [], "Planner")
         print(resp.model_dump_json(indent=2))
         self.context_manager.set_task_status(resp)
-        # 改为if + 递归调用
+        
         while resp.need_replan:
             for model_query in resp.task_specification:
                 user_resp = self.notifier.call_user("[Planner]" + model_query.query)
@@ -96,8 +97,8 @@ class PlannerAgent:
             finish_reason, resp = llm_call_json_schema(self.messages, [], "Planner")
             print(resp.model_dump_json(indent=2))
             self.context_manager.set_task_status(resp)
-        print("PlannerAgent Finished")
-        return self.messages[0], self.messages[1:]
+        print("=====PlannerAgent Finished=====")
+        return resp.is_mission_accomplished
         
     def _prepare_context(self):
         updated_prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))

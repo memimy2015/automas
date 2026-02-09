@@ -2,6 +2,8 @@ from resources.tools.progress_operation import submit
 from resources.tools.progress_operation import update_progress
 from resources.tools.persistent_shell import PersistentShell
 from resources.tools.file_operation import write_file, read_file
+from resources.tools.proactive_query import call_user
+
 
 
 class ToolExecuter:
@@ -91,7 +93,7 @@ class ToolExecuter:
                 # 工具函数名，必须和实际函数名一致
                 "name": "submit",
                 # 工具功能描述，让模型理解该函数的作用
-                "description": "提交任务结果的工具，用于向系统上报指定子任务（sub-objective）的完成情况、总结信息及相关附件文件",
+                "description": "提交任务结果的工具，用于向系统上报指定子任务（sub-objective）的完成情况、总结信息及相关附件文件。注意！这个方法只能在本次子任务所有内容执行完毕时执行，以此记录下子任务的完成情况，并且上报。因此，这个方法只能调用一次，但是必须调用，来更新这个子任务的状态。",
                 # 函数入参规范，严格匹配参数类型和含义
                 "parameters": {
                     "type": "object",
@@ -140,6 +142,24 @@ class ToolExecuter:
                 }
             }
         }
+        
+        self.tools_desc_map['call_user'] = {
+            "type": "function",
+            "function": {
+                "name": "call_user",
+                "description": "调用用户交互的工具，用于向用户获取更多信息。当你认为目前的情况需要得到用户的许可或者指挥，就使用这个方法。比如遇到权限问题时、需要用户确认某个关键操作时，又或者是遇到严重错误等，可能需要用户进行后续计划的判断的情况。此时一定要请求用户的回答。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "发送给用户的信息，用户需要根据这个信息进行确认或操作。如果这个信息需要用户做出选择，你最好提供几个选择给用户参考。尤其是遇到严重错误无法完成任务时，必须请求用户确认是否继续执行后续操作或者提供信息来解决错误，为此请在发给用户的提问中包含必要的信息，例如确认操作、拒绝操作、提供额外信息、解决建议等。"
+                        }
+                    },
+                    "required": ["query"]
+                }
+            }
+        }
     
     def call(self, tool_name: str, args: dict):
         if tool_name == "command":
@@ -152,6 +172,8 @@ class ToolExecuter:
             return update_progress(args["info"])
         elif tool_name == "submit":
             return submit(args["task_name"], args["task_summary"], args["task_status"], args["resources"])
+        elif tool_name == "call_user":
+            return call_user(args["query"])
         return f"Tool {tool_name} not found"
     
     def get_tool(self, tool_name: str):

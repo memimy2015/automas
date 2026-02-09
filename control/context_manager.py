@@ -23,19 +23,8 @@ class ContextManager:
         if self._initialized:
             return
         self._initialized = True
-        # 1. 任务目标 + 任务状态 (Task Status)
-        # Structure:
-        # {
-        #   "tasks": [
-        #     {
-        #       "objective": [{"sub_objective": str, "status": str, "milestones": []}],
-        #       "task_name": str,
-        #       "finished": bool,
-        #       "source_reference": [{"description": str, "URI": str, "type": str}]
-        #     }
-        #   ],
-        #   "next_step": {"objective_index": int, "sub_objective_index": int}
-        # }
+        print("=====ContextManager initialized.=====")
+        
         self.task_state: PlannedTasks = PlannedTasks()
 
         # 2. 总任务目标 (Global Goal)
@@ -103,7 +92,7 @@ class ContextManager:
         if 0 <= obj_idx < len(self.task_state.tasks):
             task = self.task_state.tasks[obj_idx]
             if 0 <= sub_idx < len(task.objective):
-                task.objective[sub_idx]["milestones"].append(milestone)
+                task.objective[sub_idx].milestones.append(milestone)
 
     def submit_sub_objective(self, task_summary: str, task_status: Literal["pending", "completed", "stopped", "cancelled"], files: Dict[str, ResourceReference]):
         """

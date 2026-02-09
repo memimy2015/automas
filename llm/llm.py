@@ -23,6 +23,9 @@ def llm_call(messages: list, tools: list):
     """
     调用模型，返回模型的回复
     """
+    # print(f"llm_call messages: \n {messages}")
+    # print(f"llm_call tools: \n {tools}")
+    
     resp = client.chat.completions.create(
         # 指定您创建的方舟推理接入点 ID，此处已帮您修改为您的推理接入点 ID
         model=model,
