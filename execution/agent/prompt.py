@@ -112,7 +112,8 @@ This is the current sub-objective that needs to be achieved, you just need to fo
 {}
 
 # tool use specification
-You can use the provided tools to complete the task, especially when you need to access or manipulate files, run Python scripts, or execute shell scripts, you can use the command-line tools to invoke them. 
+You can use the provided tools to complete the task, especially when you need to access or manipulate files, run Python scripts, or execute shell scripts, you can use the command-line tools to invoke them.
+You **must use submit tool to submit the result** when current sub-objective is accomplished.
 When using the submit tool, you must provide the task name, task summary, task status, and resources, as for the task status, you must use the values of pending, completed, stopped, or cancelled as required and choose one of them according to the current sub-objective's execution status.
 When using the submit tool, you must provide the resources you created during the process, that means you must trace what you created and provide the information in the resources field.
 If you have met fatal errors, or some other obstacles that you can not resolve, you must use `call_user` tool to notify the user and ask for help from the user.
