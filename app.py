@@ -27,8 +27,8 @@ context_manager = ContextManager()
 notifier = Notifier(context_manager)
 
 # for test only
-context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", pointer="https://www.my_company.com/report", type="from_memorybase")})
-context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", pointer="image.png", type="from_memorybase")})
+context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
+context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
 
 
 
