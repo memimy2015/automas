@@ -77,7 +77,10 @@ class ContextManager:
         """
         Return the dialogue.
         """
-        return self.dialogue_history
+        content = "\n".join([
+            f"role: {message['role']}, content: {message['content']}" for message in self.dialogue_history
+        ])
+        return content
     
     def _get_current_indices(self) -> Tuple[int, int]:
         """Helper to get current objective and sub-objective indices."""

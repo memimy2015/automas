@@ -178,3 +178,6 @@ class ToolExecuter:
     
     def get_tool(self, tool_name: str):
         return self.tools_desc_map[tool_name]
+    
+    def list_tools(self):
+        return self.tools_desc_map.keys()
