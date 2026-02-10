@@ -18,7 +18,7 @@ TEST_CASE_5="解决这道题" # badcase
 TEST_CASE_6="https://zhuanlan.zhihu.com/p/1999034708332405397 对网页内容做总结，提取摘要，输出pdf文件，格式美观" # badcase
 TEST_CASE_7="https://www.bilibili.com/read/cv9314580/?opus_fallback=1 总结一下网页的文字内容，然后给我展示一下M1的特性和性能，包括一些参数，输出为pdf文件，美观一点" 
 
-DEFAULT_TOOLS_LIST = ["command", "write_tmp_file", "read_tmp_file", "submit", "update_progress"]
+DEFAULT_TOOLS_LIST = ["command", "write_tmp_file", "read_tmp_file", "submit", "update_progress", "call_user"]
 
 shell = PersistentShell()
 tool_executer = ToolExecuter()
