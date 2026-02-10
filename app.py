@@ -37,7 +37,7 @@ context_manager.add_available_resources({"需要解决的题目截图": Resource
 claim_agent = ClaimerAgent(notifier, context_manager)
 plan_agent = PlannerAgent(context_manager, notifier)
 agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
-sys_prompt, msg = claim_agent.run(TEST_CASE_8)
+sys_prompt, msg = claim_agent.run(TEST_CASE_7)
 is_accomplished = plan_agent.run()
 
 while not is_accomplished:
@@ -49,7 +49,7 @@ while not is_accomplished:
     current_subtask = context_manager.get_subtask(current_subtask_index)
     current_subtask_step = context_manager.get_subtask_step(current_subtask_index, current_subtask_step_index)
     formatted_subtask_step = context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)
-    context_manager.add_dialogue({"role": "assistant", "content": formatted_subtask_step + "\n Response from agent: \n" + resp})
+    context_manager.add_dialogue({"role": "assistant", "content": formatted_subtask_step + "\n Execution summary from agent: \n" + resp})
     
     print("=====Current Plan=====")
     print(context_manager.get_formatted_plan(context_manager.task_state))

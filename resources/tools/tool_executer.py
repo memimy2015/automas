@@ -1,4 +1,3 @@
-from resources.tools.progress_operation import submit
 from resources.tools.progress_operation import update_progress
 from resources.tools.persistent_shell import PersistentShell
 from resources.tools.file_operation import write_file, read_file
