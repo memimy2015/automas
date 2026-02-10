@@ -108,7 +108,7 @@ class ToolExecuter:
                         },
                         "task_status": {
                             "type": "string",
-                            "description": "任务状态，可选值为pending、completed、stopped、cancelled，你需要根据任务执行情况选择合适的状态"
+                            "description": "任务状态，可选值为pending、completed、failed、cancelled，你需要根据任务执行情况选择合适的状态"
                         },
                         "resources": {
                             "type": "array",

@@ -21,7 +21,7 @@ class SubtaskResults(BaseModel):
 
 class SubtaskSteps(BaseModel):
     sub_objective: str = ""
-    status: Literal["pending", "completed", "stopped", "cancelled"] = "pending"
+    status: Literal["pending", "completed", "failed", "cancelled"] = "pending"
     milestones: list[str] = []
     resource_reference: list[ResourceReference] = []
     execution_summary: str = ""
@@ -52,5 +52,5 @@ class FactoryOutput(BaseModel):
 class SubmitMessage(BaseModel):
     task_name: str = Field(..., description="当前任务名称", required=True)
     task_summary: str = Field(..., description="当前任务的摘要, 可以参考过往的信息", required=True)
-    task_status: Literal["pending", "completed", "stopped", "cancelled"] = Field(..., description="当前任务的状态", required=True)
+    task_status: Literal["pending", "completed", "failed", "cancelled"] = Field(..., description="当前任务的状态", required=True)
     resource_reference: list[ResourceReference] = Field(description="当前任务的资源引用", default_factory=list)

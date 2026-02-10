@@ -94,7 +94,7 @@ class ContextManager:
             if 0 <= sub_idx < len(task.objective):
                 task.objective[sub_idx].milestones.append(milestone)
 
-    def submit_sub_objective(self, task_summary: str, task_status: Literal["pending", "completed", "stopped", "cancelled"], files: Dict[str, ResourceReference]):
+    def submit_sub_objective(self, task_summary: str, task_status: Literal["pending", "completed", "failed", "cancelled"], files: Dict[str, ResourceReference]):
         """
         Submit a sub-objective to the task list. which will check for status update for the whole task.
         """
