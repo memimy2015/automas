@@ -53,14 +53,20 @@ class Agent:
                 content = resp_msg.content
                 self.messages.append({"role": "assistant", "content": content})
                 self.messages.append({"role": "user", "content": DEFAULT_SUBMIT_PROMPT})
-                finish_reason, resp_msg = llm_call_json_schema(self.messages, [], "Submit")
-                resources = {}
-                for resource in resp_msg.resource_reference:
-                    resources[resource.description] = resource
-                print(f"submit {resp_msg.task_name}: \n {resp_msg.task_summary} \n status: {resp_msg.task_status}")
-                print(f"resources: {resources}")
-                self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources)
-                return content
+                try:
+                    finish_reason, resp_msg = llm_call_json_schema(self.messages, [], "Submit")
+                    resources = {}
+                    for resource in resp_msg.resource_reference:
+                        resources[resource.description] = resource
+                    print(f"submit {resp_msg.task_name}: \n {resp_msg.task_summary} \n status: {resp_msg.task_status}")
+                    print(f"resources: {resources}")
+                    self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources)
+                    return content
+                except Exception as e:
+                    print(f"submit {self.messages[-1]} \n error: {e}")
+                    error_summary = f"Error when submitting task execution results, error message: {e}"
+                    self.context_manager.submit_sub_objective(error_summary, "pending", {})
+                    return content
             self.messages.append(resp_msg.model_dump())
             tool_call = resp_msg.tool_calls[0]
             tool_name = tool_call.function.name
