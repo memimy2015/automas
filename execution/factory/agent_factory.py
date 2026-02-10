@@ -45,7 +45,7 @@ class AgentFactory():
     def create_agent(self, instruction: Dict[str, Any], tool_name_list: list = None) -> Agent:
         if tool_name_list is None:
             tool_name_list = self.default_tool_name_list
-        return Agent(instruction, tool_name_list, self.tool_executer, self.shell)
+        return Agent(instruction, tool_name_list, self.tool_executer, self.context_manager, self.shell)
 
     def run(self, tool_name_list: list = None) -> Agent:
         print("AgentFactory Creating New Agent")

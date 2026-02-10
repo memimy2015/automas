@@ -1,3 +1,4 @@
+from .json_schemas import SubmitMessage
 from .json_schemas import FactoryOutput
 from volcenginesdkarkruntime import Ark
 import os
@@ -17,6 +18,7 @@ registered_schema = {}
 registered_schema["Claimer"] = ClaimerSchema
 registered_schema["Planner"] = PlannedTasks
 registered_schema["PromptEngineer"] = FactoryOutput
+registered_schema["Submit"] = SubmitMessage
 
 
 def llm_call(messages: list, tools: list):
