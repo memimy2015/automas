@@ -73,7 +73,7 @@ class ContextManager:
         """
         return self.available_resources
     
-    def get_dialogue(self) -> str:
+    def get_formatted_dialogue(self) -> str:
         """
         Return the dialogue.
         """
@@ -81,6 +81,12 @@ class ContextManager:
             f"role: {message['role']}, content: {message['content']}" for message in self.dialogue_history
         ])
         return content
+    
+    def get_dialogue(self) -> str:
+        """
+        Return the dialogue.
+        """
+        return self.dialogue_history
     
     def _get_current_indices(self) -> Tuple[int, int]:
         """Helper to get current objective and sub-objective indices."""

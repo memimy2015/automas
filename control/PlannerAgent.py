@@ -69,7 +69,7 @@ class PlannerAgent:
         self.context_manager = context_manager
         self.notifier = notifier
         self.goal = None
-        prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
+        prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_formatted_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
         self.messages.append({"role": "system", "content": prompt})
         self.messages.append({"role": "user", "content": "Now start planning the task."})
 
