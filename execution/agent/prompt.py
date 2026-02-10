@@ -117,6 +117,7 @@ You **must use submit tool to submit the result** when current sub-objective is 
 When using the submit tool, you must provide the task name, task summary, task status, and resources, as for the task status, you must use the values of pending, completed, stopped, or cancelled as required and choose one of them according to the current sub-objective's execution status.
 When using the submit tool, you must provide the resources you created during the process, that means you must trace what you created and provide the information in the resources field.
 If you have met fatal errors, or some other obstacles that you can not resolve, you must use `call_user` tool to notify the user and ask for help from the user.
+If it is not necessary to use call_user tool, then do not use it.
 When using the call_user tool, you must provide the query, that means you must provide the information in the query field and it must be concise, if you can provide some option for user to choose, then you must provide these options in the query field.
 
 # skills

@@ -105,7 +105,11 @@ class ContextManager:
                 sub_objective: SubtaskSteps = task.objective[sub_idx]
                 sub_objective.status = task_status
                 sub_objective.execution_summary = task_summary
-                sub_objective.resource_reference.extend([v for v in files.values()])
+                cur_resources = set()
+                for cur_res in sub_objective.resource_reference:
+                    cur_resources.add(cur_res.description)
+                    cur_resources.add(cur_res.URI)
+                sub_objective.resource_reference.extend([v for v in files.values() if v.description not in cur_resources and v.URI not in cur_resources])
                 self.add_available_resources(files)
                 print(f"Submitted to {obj_idx + 1}.{sub_idx + 1} {sub_objective.sub_objective}")
             else:

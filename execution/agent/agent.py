@@ -73,5 +73,5 @@ class Agent:
             tool_args = json.loads(tool_call.function.arguments)
             tool_result = self.tool_executer.call(tool_name, tool_args)
             self.messages.append(
-                {"role": "tool", "content": tool_result, "tool_call_id": tool_call.id}
+                {"role": "tool", "content": tool_result, "tool_call_id": tool_call.id, "tool_name": tool_name}
             )
