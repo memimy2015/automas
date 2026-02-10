@@ -73,7 +73,7 @@ class ContextManager:
         """
         return self.available_resources
     
-    def get_dialogue(self) -> List[Dict[str, Any]]:
+    def get_dialogue(self) -> str:
         """
         Return the dialogue.
         """
