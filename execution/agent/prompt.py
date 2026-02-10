@@ -128,8 +128,10 @@ When using a skill, you should first refer to the skill's user instructions.
 For a task, if there are matching skills, priority should be given to executing in accordance with the skills' user manual. Only after failure should other methods be attempted.
 
 # output
-- Determine whether the results of processing or analysis need to be generated in the form of files based on user requirements. All deliverables shall be placed in the {} directory of the current project. If this directory does not exist, create it.
+- output directory path: {}
+- Determine whether the results of processing or analysis need to be generated in the form of files based on user requirements. All deliverables shall be placed in the output directory of the current project. If this directory does not exist, create it.
 - You must create a folder in the output directory to store the deliverables, named what you think is appropriate.
+- You must not create or delete any file other than output folder.
 
 # tmp directory
 All temporary files generated during the process are stored in the "{}" directory, do not delete temporary files.
