@@ -20,7 +20,7 @@ class Notifier:
     
     # for test
     def call_user(self, notification_msg: str):
-        print("Current Objective needs more infomations")
+        print("Current Objective needs more informations")
         msg = get_input("====Notification====\n" + notification_msg + "\n")
         self.context_manager.add_dialogue({"role": "assistant", "content": notification_msg})
         self.context_manager.add_dialogue({"role": "user", "content": msg})
