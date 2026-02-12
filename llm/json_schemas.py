@@ -1,12 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from uuid import uuid4
 from typing import Literal
 class ProacvtiveQuery(BaseModel):
     query: str
 
 class ResourceReference(BaseModel):
-    description: str = None
-    URI: str = None
-    type: Literal["from_user", "from_memorybase", "from_agent"] = "from_user"
+    description: str = Field(..., description="资源的描述", required=True)
+    URI: str = Field(..., description="资源的URI", required=True)
+    type: Literal["from_user", "from_memorybase", "from_agent"] = Field(description="资源的来源类型", required=True, default="from_user")
 
 class ClaimerSchema(BaseModel):
     need_more_info: bool
@@ -20,7 +21,7 @@ class SubtaskResults(BaseModel):
 
 class SubtaskSteps(BaseModel):
     sub_objective: str = ""
-    status: Literal["pending", "completed", "stopped", "cancelled"] = "pending"
+    status: Literal["pending", "completed", "failed", "cancelled"] = "pending"
     milestones: list[str] = []
     resource_reference: list[ResourceReference] = []
     execution_summary: str = ""
@@ -47,3 +48,9 @@ class PlannedTasks(BaseModel):
 class FactoryOutput(BaseModel):
     role_setting: str = ""
     task_specification: str = ""
+    
+class SubmitMessage(BaseModel):
+    task_name: str = Field(..., description="当前任务名称", required=True)
+    task_summary: str = Field(..., description="当前任务的摘要, 可以参考过往的信息", required=True)
+    task_status: Literal["pending", "completed", "failed", "cancelled"] = Field(..., description="当前任务的状态", required=True)
+    resource_reference: list[ResourceReference] = Field(description="当前任务的资源引用", default_factory=list)

@@ -29,11 +29,11 @@ You will serve for following usages:
 
 
 # Specific requirements
-- You must not edit the status or finished state or is_mission_accomplished state of the sub-objective or objective in the task list, if there is no adjustment about planning. And if you adjust the planning, you must be careful to set the finished state, is_mission_accomplished state and status correctly. Caution! status only got four choices, ["pending", "completed", "stopped", "cancelled"].
+- You must not edit the status or finished state or is_mission_accomplished state of the sub-objective or objective in the task list, if there is no adjustment about planning. And if you adjust the planning, you must be careful to set the finished state, is_mission_accomplished state and status correctly. Caution! status only got four choices, ["pending", "completed", "failed", "cancelled"].
 - You need to attach the resource reference to the task list. 
 - If there are available sources that helps to accomplish the sub-objective or objective, corresponding objective must have a description and a URI to the source of the information. The URI should be a valid url or file path. And type in ResourceReference object must be one of from_user or from_memorybase or from_agent, you will be given the type of source reference, and you should not edit this field.
 - If the user provides multiple links or file paths, you must add them to the json output in the form of a list of ResourceReference objects.
-- Status for each sub-objective in the task list is one of pending, completed, stopped, cancelled.
+- Status for each sub-objective in the task list is one of pending, completed, failed, cancelled.
 - Name of objective can be a description of the objective.
 - Sub-objective must be executable step rather than summary or description.
 - Next step must be in the form of NextStep object.
@@ -69,7 +69,7 @@ class PlannerAgent:
         self.context_manager = context_manager
         self.notifier = notifier
         self.goal = None
-        prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
+        prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_formatted_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
         self.messages.append({"role": "system", "content": prompt})
         self.messages.append({"role": "user", "content": "Now start planning the task."})
 

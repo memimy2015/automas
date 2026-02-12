@@ -20,14 +20,14 @@ def update_progress(info: str):
         error_msg = f"Failed to add milestone {info}. Error: {e}"
         return error_msg
     
-def submit(task_name: str, task_summary: str, task_status: Literal["pending", "completed", "stopped", "cancelled"], resources: List[Dict[str, str]]):
+def submit(task_name: str, task_summary: str, task_status: Literal["pending", "completed", "failed", "cancelled"], resources: List[Dict[str, str]]):
     """
     Submit a task with the given name, summary, status, and resources.
 
     Args:
         task_name (str): the name of the task
         task_summary (str): a summary of the task
-        task_status (Literal["pending", "completed", "stopped", "cancelled"]): the status of the task
+        task_status (Literal["pending", "completed", "failed", "cancelled"]): the status of the task
         files (List[Dict[str, Any]]): a list of files to be submitted
     """
     print(f'Submitting task {task_name} with summary {task_summary} and status {task_status}')

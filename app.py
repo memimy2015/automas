@@ -17,18 +17,21 @@ TEST_CASE_4="我需要生成一份公司周报的ppt，用来在会议上演示"
 TEST_CASE_5="解决这道题" # badcase
 TEST_CASE_6="https://zhuanlan.zhihu.com/p/1999034708332405397 对网页内容做总结，提取摘要，输出pdf文件，格式美观" # badcase
 TEST_CASE_7="https://www.bilibili.com/read/cv9314580/?opus_fallback=1 总结一下网页的文字内容，然后给我展示一下M1的特性和性能，包括一些参数，输出为pdf文件，美观一点" 
-
-DEFAULT_TOOLS_LIST = ["command", "write_tmp_file", "read_tmp_file", "submit", "update_progress"]
+TEST_CASE_8="https://aime.bytedance.net/chat?spaceId=adaf00f3-6168-4a58-aed4-bae54f4d02fd&source=0&order=6 浏览网页内的公开模板以及其中的内容，找出有关于office办公的以及飞书的相关操作的模板，并且整理出他们的模板名字放在markdown文件里给我看。我之后需要根据这些模板的名字搜索他们。"
+TEST_CASE_9="https://news.ycombinator.com/item?id=45684134, 浏览网页信息，并且做一下汇总，尤其是关于claude的memory部分的分析，输出pdf文件，格式美观，同时整理一份markdown版本的。"
+TEST_CASE_9="https://news.ycombinator.com/item?id=45684134, https://code.claude.com/docs/en/memory 浏览网页信息，并且做一下汇总，尤其是关于claude的memory部分的分析，把前一个网址中的用户讨论内容和后一个网址中的官方文档的内容匹配一下，输出pdf文件，格式美观，同时整理一份markdown版本的。对于前一个网址的总结文档我已经有一份markdown格式的了，你可能不需要直接看网址内容。"
+# DEFAULT_TOOLS_LIST = ["command", "write_tmp_file", "read_tmp_file", "update_progress", "call_user"]
 
 shell = PersistentShell()
 tool_executer = ToolExecuter()
 # progress_manager = ProgressManager()
 context_manager = ContextManager()
 notifier = Notifier(context_manager)
-
+DEFAULT_TOOLS_LIST = tool_executer.list_tools()
+print(f"Available tools: {DEFAULT_TOOLS_LIST}")
 # for test only
-context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", pointer="https://www.my_company.com/report", type="from_memorybase")})
-context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", pointer="image.png", type="from_memorybase")})
+context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
+context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
 
 
 
@@ -36,7 +39,7 @@ context_manager.add_available_resources({"需要解决的题目截图": Resource
 claim_agent = ClaimerAgent(notifier, context_manager)
 plan_agent = PlannerAgent(context_manager, notifier)
 agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
-sys_prompt, msg = claim_agent.run(TEST_CASE_1)
+sys_prompt, msg = claim_agent.run(TEST_CASE_9)
 is_accomplished = plan_agent.run()
 
 while not is_accomplished:
@@ -48,7 +51,7 @@ while not is_accomplished:
     current_subtask = context_manager.get_subtask(current_subtask_index)
     current_subtask_step = context_manager.get_subtask_step(current_subtask_index, current_subtask_step_index)
     formatted_subtask_step = context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)
-    context_manager.add_dialogue({"role": "assistant", "content": formatted_subtask_step + "\n Response from agent: \n" + resp})
+    context_manager.add_dialogue({"role": "assistant", "content": formatted_subtask_step + "\n Execution summary from agent: \n" + resp})
     
     print("=====Current Plan=====")
     print(context_manager.get_formatted_plan(context_manager.task_state))

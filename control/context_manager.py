@@ -73,7 +73,16 @@ class ContextManager:
         """
         return self.available_resources
     
-    def get_dialogue(self) -> List[Dict[str, Any]]:
+    def get_formatted_dialogue(self) -> str:
+        """
+        Return the dialogue.
+        """
+        content = "\n".join([
+            f"role: {message['role']}, content: {message['content']}" for message in self.dialogue_history
+        ])
+        return content
+    
+    def get_dialogue(self) -> str:
         """
         Return the dialogue.
         """
@@ -94,7 +103,7 @@ class ContextManager:
             if 0 <= sub_idx < len(task.objective):
                 task.objective[sub_idx].milestones.append(milestone)
 
-    def submit_sub_objective(self, task_summary: str, task_status: Literal["pending", "completed", "stopped", "cancelled"], files: Dict[str, ResourceReference]):
+    def submit_sub_objective(self, task_summary: str, task_status: Literal["pending", "completed", "failed", "cancelled"], files: Dict[str, ResourceReference]):
         """
         Submit a sub-objective to the task list. which will check for status update for the whole task.
         """
@@ -105,9 +114,13 @@ class ContextManager:
                 sub_objective: SubtaskSteps = task.objective[sub_idx]
                 sub_objective.status = task_status
                 sub_objective.execution_summary = task_summary
-                sub_objective.resource_reference.extend([v for v in files.values()])
+                cur_resources = set()
+                for cur_res in sub_objective.resource_reference:
+                    cur_resources.add(cur_res.description)
+                    cur_resources.add(cur_res.URI)
+                sub_objective.resource_reference.extend([v for v in files.values() if v.description not in cur_resources and v.URI not in cur_resources])
                 self.add_available_resources(files)
-                print(f"Submitted to {obj_idx + 1}.{sub_idx + 1} {sub_objective.sub_objective_name}")
+                print(f"Submitted to {obj_idx + 1}.{sub_idx + 1} {sub_objective.sub_objective}")
             else:
                 print("Invalid sub-objective index.")
                 raise ValueError("Invalid sub-objective index.")
