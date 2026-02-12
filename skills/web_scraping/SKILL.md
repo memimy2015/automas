@@ -1,6 +1,6 @@
 ---
 name: web-scraping
-description: Information can be obtained from the Internet, including from specified URLs and through searches across the entire Internet.
+description: Web-scraping skills can be used to obtain information from the Internet, including searches with specified URLs and searches without specified URLs. If you need to obtain information from the Internet, web-scraping skill should be prioritized.
 ---
 
 # Targeted URL Search
