@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from uuid import uuid4
 from typing import Literal
 class ProacvtiveQuery(BaseModel):
-    query: str
+    query: str = Field(description="向用户提出询问补充信息的问题", default="")
 
 class ResourceReference(BaseModel):
     description: str = Field(..., description="资源的描述", required=True)
@@ -10,44 +10,44 @@ class ResourceReference(BaseModel):
     type: Literal["from_user", "from_memorybase", "from_agent"] = Field(description="资源的来源类型", required=True, default="from_user")
 
 class ClaimerSchema(BaseModel):
-    need_more_info: bool
-    contents: list[ProacvtiveQuery]
-    refined_objective: str = None
-    resource_reference: list[ResourceReference] = []
+    need_more_info: bool = Field(default=False, description="是否需要更多信息")
+    contents: list[ProacvtiveQuery] = Field(description="为了补充不足的信息而用户提出的问题列表", default_factory=list)
+    refined_objective: str = Field(description="用户对任务的完善描述", default="")
+    resource_reference: list[ResourceReference] = Field(description="用户对任务的完善描述的资源引用", default_factory=list)
 
 class SubtaskResults(BaseModel):
-    Summary: str = ""
-    CreatedResource: list[ResourceReference] = [] # 新创建的资源引用,类型一定是from_agent
+    Summary: str = Field(description="子任务的摘要", default="")
+    CreatedResource: list[ResourceReference] = Field(description="新创建的资源引用,类型一定是from_agent", default_factory=list)
 
 class SubtaskSteps(BaseModel):
-    sub_objective: str = ""
-    status: Literal["pending", "completed", "failed", "cancelled"] = "pending"
-    milestones: list[str] = []
-    resource_reference: list[ResourceReference] = []
-    execution_summary: str = ""
+    sub_objective: str = Field(description="子任务的子步骤描述", default="")
+    status: Literal["pending", "completed", "failed", "cancelled"] = Field(description="子任务的子步骤的状态", default="pending")
+    milestones: list[str] = Field(description="子任务的子步骤的里程碑信息", default_factory=list)
+    resource_reference: list[ResourceReference] = Field(description="子任务的子步骤的资源引用", default_factory=list)
+    execution_summary: str = Field(description="子任务的子步骤的执行摘要", default="")
 
 class Subtask(BaseModel):
-    objective: list[SubtaskSteps] = []
-    task_name: str = ""
-    finished: bool = False
-    resource_reference: list[ResourceReference] = []
+    objective: list[SubtaskSteps] = Field(description="子任务的步骤列表", default_factory=list)
+    task_name: str = Field(description="子任务的名称", default="")
+    finished: bool = Field(default=False, description="子任务是否完成")
+    resource_reference: list[ResourceReference] = Field(description="子任务的资源引用", default_factory=list)
 
 class NextStep(BaseModel):
-    objective_index: int = 0
-    sub_objective_index: int = 0
+    objective_index: int = Field(default=0, description="子任务的索引")
+    sub_objective_index: int = Field(default=0, description="子任务的子步骤的索引")
 
 class PlannedTasks(BaseModel):
-    tasks: list[Subtask]= []
-    next_step: NextStep = NextStep()
-    need_replan: bool = False
-    is_mission_accomplished: bool = False
-    overall_goal: str = ""
-    replan_reason: str = ""
-    task_specification: list[ProacvtiveQuery] = []
+    tasks: list[Subtask]= Field(description="子任务列表", default_factory=list)
+    next_step: NextStep = Field(default=NextStep(), description="下一个执行的子任务以及子任务的子步骤的索引")
+    need_replan: bool = Field(default=False, description="是否需要重新规划")
+    is_mission_accomplished: bool = Field(default=False, description="是否所有子任务都已完成")
+    overall_goal: str = Field(description="总目标", default="")
+    replan_reason: str = Field(description="重新规划的原因", default="")
+    task_specification: list[ProacvtiveQuery] = Field(description="重新规划的任务时，以提问方式向用户询问需要补充的信息的列表，提问最好给出选项。", default_factory=list)
     
 class FactoryOutput(BaseModel):
-    role_setting: str = ""
-    task_specification: str = ""
+    role_setting: str = Field(description="工厂角色信息的设置", default="")
+    task_specification: str = Field(description="任务的详细要求描述，可以是注意事项和步骤，有其他值得提及的也可以补充。", default="")
     
 class SubmitMessage(BaseModel):
     task_name: str = Field(..., description="当前任务名称", required=True)

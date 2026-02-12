@@ -29,6 +29,9 @@ The goal is to obtain an executable and plannable requirement through dialogue w
 - If the user provides multiple links or file paths, you must add them to the json output in the form of a list of ResourceReference objects.
 - The type of each ResourceReference object must be 'from_user'.
 
+# project directory
+- project directory path(PROJECT_DIR): {PROJECT_DIR}
+
 
 # Output
 JSON format
@@ -38,7 +41,7 @@ class ClaimerAgent:
     def __init__(self, notifier: Notifier, context_manager: ContextManager):
         self.messages = []
         # prompt = DEFAULT_INSTRUCTION.format(access_knowledgeDB())
-        prompt = DEFAULT_INSTRUCTION
+        prompt = DEFAULT_INSTRUCTION.format(PROJECT_DIR=context_manager.get_project_dir())
         self.messages.append({"role": "system", "content": prompt})
         self.notifier = notifier
         self.context_manager = context_manager

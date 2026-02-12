@@ -53,7 +53,6 @@ print(f"Available tools: {DEFAULT_TOOLS_LIST}")
 claim_agent = ClaimerAgent(notifier, context_manager)
 plan_agent = PlannerAgent(context_manager, notifier)
 agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
-<<<<<<< HEAD
 sys_prompt, msg = claim_agent.run(TEST_CASE_1)
 is_accomplished = plan_agent.run()
 

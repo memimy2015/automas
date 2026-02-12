@@ -1,3 +1,4 @@
+from execution.agent.prompt import PROJECT_DIR
 from control.context_manager import ContextManager
 from resources.tools.persistent_shell import PersistentShell
 from resources.tools.skill_tool import get_skill_list
@@ -29,6 +30,9 @@ You will serve for following usages:
 
 
 # Specific requirements
+- SubtaskSteps object is the only object that contains executable information, therefore you must make sure objective in Subtask object is not an empty list.
+- task_name field in the task list is the name of a group of sub_objectives.
+- When editing next_step objective, you must be very careful to set the status of the objective_index and sub_objective_index correctly. They refer to the index of the objective and sub-objective in the task list respectively and it is 0-indexed. You can check the index in the task list to decide how to fill in these field, however, task index in following task list is 1-indexed human-readable format, you should pay attention to the difference.
 - You must not edit the status or finished state or is_mission_accomplished state of the sub-objective or objective in the task list, if there is no adjustment about planning. And if you adjust the planning, you must be careful to set the finished state, is_mission_accomplished state and status correctly. Caution! status only got four choices, ["pending", "completed", "failed", "cancelled"].
 - You need to attach the resource reference to the task list. 
 - If there are available sources that helps to accomplish the sub-objective or objective, corresponding objective must have a description and a URI to the source of the information. The URI should be a valid url or file path. And type in ResourceReference object must be one of from_user or from_memorybase or from_agent, you will be given the type of source reference, and you should not edit this field.
@@ -45,7 +49,7 @@ You will serve for following usages:
 - If a user requests to check files within a folder as resources for a task, it's best to treat folder checking as a separate step to prevent the folder from becoming too large to handle in a single step. If the folder is found to be too full, the task plan should be modified to distribute file reading across different tasks. Similarly, it's advisable to check other potentially resource-intensive items before making any decisions.
 
 # Chat History
-{}
+{ChatHistory}
 
 # Task 
 Task is in Markdown format.
@@ -54,14 +58,44 @@ If current task already has items, you need to check history list and give an up
 If there is no need to update task, you just need to repeat it and decide next steps to do.
 When deciding next executable step, you must attach specification and details to it so as to let downstream executor works better.
 latest task list:
-{}
+{TaskList}
 
 # Overall goal
-Current overall goal: {}
+Current overall goal: {OverallGoal}
+
+# Replan schedule (if needed)
+
+First, review all completed tasks and subtasks. 
+If a completed task or subtask is not affected by the current changes, keep it unchanged in the next plan.
+
+Then, determine the next step to execute.
+
+In the `next_step` object:
+- `objective_index` refers to the index of the objective in the task list.
+- `sub_objective_index` refers to the index of the sub-objective within that objective.
+- Both indices are 0-based.
+
+# Project directory
+- project directory path(PROJECT_DIR): {PROJECT_DIR}
+
 
 # Output format
 JSON format
 
+"""
+
+REPLAN_SCHEDULE = """
+# Replan schedule (if needed)
+
+First, review all completed tasks and subtasks. 
+If a completed task or subtask is not affected by the current changes, keep it unchanged in the next plan.
+
+Then, determine the next step to execute.
+
+In the `next_step` object:
+- `objective_index` refers to the index of the objective in the task list.
+- `sub_objective_index` refers to the index of the sub-objective within that objective.
+- Both indices are 0-based.
 """
 
 class PlannerAgent:
@@ -70,7 +104,12 @@ class PlannerAgent:
         self.context_manager = context_manager
         self.notifier = notifier
         self.goal = None
-        prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_formatted_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
+        prompt = DEFAULT_INSTRUCTION.format(
+            PROJECT_DIR=context_manager.get_project_dir(),
+            ChatHistory=self.context_manager.get_formatted_dialogue(), 
+            OverallGoal=self.context_manager.get_overall_goal(), 
+            TaskList=self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0])
+        )
         self.messages.append({"role": "system", "content": prompt})
         self.messages.append({"role": "user", "content": "Now start planning the task."})
 
@@ -92,6 +131,7 @@ class PlannerAgent:
         self.context_manager.set_task_status(resp)
         
         while resp.need_replan:
+            print(f"=====Replan Required, reason: {resp.replan_reason}=====")
             for model_query in resp.task_specification:
                 user_resp = self.notifier.call_user("[Planner]" + model_query.query)
             self._prepare_context()
@@ -101,7 +141,15 @@ class PlannerAgent:
         print("=====PlannerAgent Finished=====")
         return resp.is_mission_accomplished
         
-    def _prepare_context(self):
-        updated_prompt = DEFAULT_INSTRUCTION.format(self.context_manager.get_dialogue(), self.context_manager.get_overall_goal(), self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]))
+    def _prepare_context(self, need_replan: bool = False, replan_reason: str = ""):
+        updated_prompt = DEFAULT_INSTRUCTION.format(
+            PROJECT_DIR=self.context_manager.get_project_dir(),
+            ChatHistory=self.context_manager.get_formatted_dialogue(), 
+            OverallGoal=self.context_manager.get_overall_goal(), 
+            TaskList=self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0])
+        )
         self.messages[0] = {"role": "system", "content": updated_prompt}
-        self.messages[1] = {"role": "user", "content": "Now start planning the task."}      
+        self.messages[1] = {
+            "role": "user", "content": "Now start planning the task." if need_replan else
+                            "Replan required, reason: " + replan_reason + "\n " + REPLAN_SCHEDULE
+        }      

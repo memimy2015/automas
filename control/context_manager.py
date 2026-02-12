@@ -1,3 +1,5 @@
+import os
+from llm.json_schemas import NextStep
 from operator import sub
 from llm.json_schemas import Subtask
 from llm.json_schemas import SubtaskSteps
@@ -37,6 +39,14 @@ class ContextManager:
 
         # 4. 对话历史 (Dialogue History)
         self.dialogue_history: List[Dict[str, Any]] = []
+        
+        self.project_dir: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def get_project_dir(self) -> str:
+        """
+        Return the project directory(AUTOMAS).
+        """
+        return self.project_dir
 
     def get_context(self) -> Dict[str, Any]:
         """
@@ -60,6 +70,22 @@ class ContextManager:
         Set the task status.
         """
         self.task_state = task_state
+        self.overall_goal = task_state.overall_goal
+        self.verify_index()
+        
+    def verify_index(self):
+        task = self.task_state
+        idx_i, idx_j = self._get_current_indices()
+        for i, subtask in enumerate(task.tasks):
+            for j, sub_objective in enumerate(subtask.objective):
+                if sub_objective.status == "pending":
+                    assert(i == idx_i and j == idx_j, f"Current index: {idx_i}, {idx_j}, expected index {i}, {j}")
+                    print(f"Current index: {idx_i}, {idx_j}, expected index {i}, {j}")
+                    task.next_step = NextStep(
+                        objective_index=i,
+                        sub_objective_index=j,
+                    )
+                    return
     
     def get_overall_goal(self) -> str:
         """

@@ -93,6 +93,7 @@ CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 AUTOMAS_DIR = os.path.dirname(os.path.dirname(CURRENT_FILE_DIR))  # Go up two levels: execution/agent -> execution -> automas
 DEFAULT_TMP_DIR = os.path.join(AUTOMAS_DIR, "tmp")
 DEFAULT_OUTPUT_DIR = os.path.join(AUTOMAS_DIR, "output")
+PROJECT_DIR = AUTOMAS_DIR
 
 SYS_PROMPT_TEMPLATE = """
 # role
@@ -119,6 +120,24 @@ You can use the provided tools to complete the task, especially when you need to
 - If it is not necessary to use call_user tool, then do not use it.
 - Do not use call_user tool to ask the user for unnecessary permission, such as access or modify files and ask for permission to continue operation with side-effects.
 
+## update_progress tool
+
+Purpose:
+This tool is used to report the progress of the current sub-objective.
+It acts as a milestone notifier.
+
+Usage Rules:
+1. The update message must describe only the newly completed progress of the current sub-objective.
+2. The message must be precise and concise.
+3. Do not include unrelated details.
+4. Do not repeat previously reported information.
+5. Never provide:
+   - An empty string
+   - Full resource content
+6. If a new resource is created, provide its URI instead of its content.
+7. Do not use this tool unless actual progress has been made.
+
+
 # skills
 {}
 You currently possess these skills. Further details on how to use these skills, as well as their actual application, all require accessing and utilizing them by invoking command-line tools to execute corresponding operations such as browsing files, running Python scripts, and executing shell scripts. Only when there is a genuine need to use the relevant skills should you call the command-line tools to conduct further operational tests.
@@ -126,7 +145,7 @@ When users ask questions related to skills, always answer with this part of the 
 When using a skill, you should first refer to the skill's user instructions.
 For a task, if there are matching skills, priority should be given to executing in accordance with the skills' user manual. Only after failure should other methods be attempted.
 
-# output
+# output directory
 - output directory path: {}
 - Determine whether the results of processing or analysis need to be generated in the form of files based on user requirements. All deliverables shall be placed in the output directory of the current project. If this directory does not exist, create it.
 - You must create a folder in the output directory to store the deliverables, named what you think is appropriate.
@@ -135,6 +154,9 @@ For a task, if there are matching skills, priority should be given to executing 
 # tmp directory
 - tmp directory path: {}
 - All temporary files generated during the process are stored in the tmp directory, do not delete temporary files.
+
+# project directory
+- project directory path(PROJECT_DIR): {}
 
 # note
 When reading and writing files, attention should be paid to the issue of **Chinese character encoding**. Do not display garbled Chinese characters.
@@ -148,5 +170,5 @@ The current os platform is {}.
 """
 
 
-def render(role_setting: str, task_background: str, sub_objective: str,  task_specification: str, skills: str, prompt_template: str = SYS_PROMPT_TEMPLATE, tmp_dir: str = DEFAULT_TMP_DIR, output_dir: str = DEFAULT_OUTPUT_DIR):
-    return prompt_template.format(role_setting, task_background, sub_objective, task_specification, skills, output_dir, tmp_dir, datetime.now().strftime("%Y年%m月%d日"), build_system_context())
+def render(role_setting: str, task_background: str, sub_objective: str,  task_specification: str, skills: str, prompt_template: str = SYS_PROMPT_TEMPLATE, tmp_dir: str = DEFAULT_TMP_DIR, output_dir: str = DEFAULT_OUTPUT_DIR, project_dir: str = PROJECT_DIR):
+    return prompt_template.format(role_setting, task_background, sub_objective, task_specification, skills, output_dir, tmp_dir, project_dir, datetime.now().strftime("%Y年%m月%d日"), build_system_context())
