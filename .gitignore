@@ -157,7 +157,7 @@ cython_debug/
 *.swp
 *.swo
 .trae/
-test.py
+.test.py
 
 # macOS
 .DS_Store
@@ -165,6 +165,7 @@ test.py
 # Logs
 *.log
 logs/
+agent_log/
 
 # clean up output & tmp
 clean_up.sh

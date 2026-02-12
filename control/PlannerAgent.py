@@ -42,6 +42,7 @@ You will serve for following usages:
 - Milestones must be in the form of strings, and each milestone must be a description of the milestone, you just need to read this section to catch up with current accomplishments and do not modify it.
 - Overall goal must be in the form of strings, and it must be the same as overall goal in latest task, if it is not empty and there is no need to change it.
 - If there is a critical problem in the task, you must update the overall goal to reflect the problem, and set need_replan to True to ask user for more information and then fill them into task_specification. You must also provide a reason for replanning in replan_reason field. Once user gives more information, you must repeat the planning process and if there is no need to re, you just need to repeat it and decide next steps to do.
+- If a user requests to check files within a folder as resources for a task, it's best to treat folder checking as a separate step to prevent the folder from becoming too large to handle in a single step. If the folder is found to be too full, the task plan should be modified to distribute file reading across different tasks. Similarly, it's advisable to check other potentially resource-intensive items before making any decisions.
 
 # Chat History
 {}

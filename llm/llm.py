@@ -39,8 +39,9 @@ def llm_call(messages: list, tools: list):
         },
         messages=messages,
         tools=tools,
+        max_tokens=12 * 1024,
     )
-    return resp.choices[0].finish_reason, resp.choices[0].message
+    return resp.choices[0].finish_reason, resp.choices[0].message, resp.usage
 
 # Json schema输出不可用stream参数
 def llm_call_json_schema(messages: list, tools: list, jsonSchema: str):
@@ -58,6 +59,7 @@ def llm_call_json_schema(messages: list, tools: list, jsonSchema: str):
         },
         messages=messages,
         tools=tools,
-        response_format=registered_schema[jsonSchema]
+        response_format=registered_schema[jsonSchema],
+        max_tokens=20 * 1024,
     )
     return resp.choices[0].finish_reason, resp.choices[0].message.parsed

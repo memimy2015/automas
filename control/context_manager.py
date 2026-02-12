@@ -190,6 +190,11 @@ class ContextManager:
     def get_formatted_subtask(self, task: Subtask, index: int) -> str:
         """
         Convert a Subtask object into a Markdown formatted string.
+        Args:
+            task: The Subtask object to convert.
+            index: The index of the task (1-based).
+        Returns:
+            A string in Markdown format representing the Subtask object.
         """
         markdown_lines = []
         task_finished_mark = "[x]" if task.finished else "[ ]"
@@ -208,6 +213,12 @@ class ContextManager:
     def get_formatted_subtask_step(self, sub_obj: SubtaskSteps, task_index: int, step_index: int) -> str:
         """
         Convert a SubtaskSteps object into a Markdown formatted string.
+        Args:
+            sub_obj: The SubtaskSteps object to convert.
+            task_index: The index of the task (1-based).
+            step_index: The index of the sub-objective (1-based).
+        Returns:
+            A string in Markdown format representing the SubtaskSteps object.
         """
         markdown_lines = []
         status_str = sub_obj.status
