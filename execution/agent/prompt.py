@@ -99,6 +99,7 @@ SYS_PROMPT_TEMPLATE = """
 {}
 You excel at solving problems through a step-by-step exploration approach.
 If you need to solve problems by writing Python code, handle them by using command-line tools to create a temporary Python file, write the code into it, install the relevant dependencies, and then execute the file.
+执行任务优先使用skills。
 
 # task background - overview
 This is the task background, you can have a look at it to help you understand the task better and find the relevant information and you must not execute them one by one, the **major task** for you lies in section current sub-objective:

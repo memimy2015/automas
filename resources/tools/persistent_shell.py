@@ -63,7 +63,7 @@ class PersistentShell:
             except Exception:
                 break
 
-    def execute_command(self, command, timeout=30.0):
+    def execute_command(self, command, timeout=180.0):
         """
         Executes a command in the persistent terminal.
         Returns (success, output).
@@ -94,17 +94,55 @@ class PersistentShell:
         
         while True:
             # Check for timeout
-            if time.time() - start_time > timeout:                
-                # Try to interrupt the process (Ctrl+C)
+            if time.time() - start_time > timeout:
+                self.logger.warning(f"Command execution timed out after {timeout}s: {command}")
+                print(f"Command execution timed out after {timeout}s")
+                
+                # Attempt 1: Send Ctrl+C (SIGINT)
                 try:
                     self.process.stdin.write('\x03')
                     self.process.stdin.flush()
+                    # Give it a moment to react
+                    time.sleep(0.5)
                 except:
                     pass
                 
+                # Verify if the process is still stuck or outputting (drain queue)
+                # If command is truly stuck, Ctrl+C should kill it and return to prompt.
+                # But if it's a deep system call or unresponsive, we might need stronger measures.
+                # However, killing the shell itself kills the session.
+                # We can try sending SIGINT again or multiple times.
+                
+                # For robust cleanup of the stuck command without killing the shell:
+                # 1. We've sent Ctrl+C.
+                # 2. We should consume any remaining output until the shell is responsive again?
+                # Actually, if we return here, the next command might fail if the previous one is still running.
+                # To be safe, if we timeout, we might want to restart the terminal session if possible,
+                # or at least ensure we are back at a prompt.
+                
+                # Strategy: Send Ctrl+C, then try to print a known marker to verify shell is responsive.
+                # If that fails, we might need to kill the terminal.
+                
+                # Let's try to "ping" the shell to see if it's alive and ready.
+                try:
+                    # Send Ctrl+C again to be sure
+                    self.process.stdin.write('\x03\n')
+                    self.process.stdin.flush()
+                    time.sleep(0.5)
+                    
+                    # Try to clear out the queue
+                    while not self.output_queue.empty():
+                         try:
+                            self.output_queue.get_nowait()
+                         except queue.Empty:
+                            break
+                except:
+                     pass
+
                 result_output = "".join(output_buffer)
-                self.logger.error(f"execute status: False\nstdout:{result_output}\n[Error: Command timed out after {timeout} seconds]")
-                return f"execute status: False\nstdout:{result_output}\n[Error: Command timed out after {timeout} seconds]"
+                self.logger.error(f"execute status: False\nstdout:{result_output}\n[Error: Command timed out after {timeout} seconds. Sent SIGINT to interrupt.]")
+                return f"execute status: False\nstdout:{result_output}\n[Error: Command timed out after {timeout} seconds. Sent SIGINT to interrupt.]"
+
             try:
                 # Read with short timeout to allow checking total time
                 char = self.output_queue.get(timeout=0.1)
