@@ -63,7 +63,8 @@ class AgentFactory():
             "role_setting": resp.role_setting,
             "task_specification": resp.task_specification,
             "skills": get_skill_list(),
-            "task_background": formatted_subtask,
+            # "task_background": formatted_subtask,
+            "task_background": "None",
             "sub_objective": formatted_subtask_step,
         }
         print("AgentFactory Created New Agent")
