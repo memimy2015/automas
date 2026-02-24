@@ -167,5 +167,9 @@ cython_debug/
 logs/
 agent_log/
 
-# clean up output & tmp
-clean_up.sh
+
+# dump file
+dump/
+
+# essay
+# essay/

@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 from uuid import uuid4
 from typing import Literal
@@ -25,6 +26,7 @@ class SubtaskSteps(BaseModel):
     milestones: list[str] = Field(description="子任务的子步骤的里程碑信息", default_factory=list)
     resource_reference: list[ResourceReference] = Field(description="子任务的子步骤的资源引用", default_factory=list)
     execution_summary: str = Field(description="子任务的子步骤的执行摘要", default="")
+    agent_id: Optional[int] = Field(description="执行子任务的智能体的ID，如果子任务还没开始就不需要设置，已经完成的子任务会包含这个字段，你只需要保持原样。", default=None)
 
 class Subtask(BaseModel):
     objective: list[SubtaskSteps] = Field(description="子任务的步骤列表", default_factory=list)

@@ -1,3 +1,4 @@
+from control.SummarizerAgent import SummarizerAgent
 from execution.factory.agent_factory import AgentFactory
 from llm.json_schemas import ResourceReference
 from control.context_manager import ContextManager
@@ -9,6 +10,8 @@ from resources.tools.persistent_shell import PersistentShell
 from resources.tools.file_operation import write_file, read_file
 from control.notifier import Notifier
 from resources.tools.console_input import get_input
+import argparse
+import os
 
 TEST_CASE_1="https://mp.weixin.qq.com/s/qbXm1Vq7dc_2KPOJerZUqw 对网页内容做总结，提取摘要，输出pdf文件，格式美观。制作PDF要使用pdf skill"
 TEST_CASE_2="我想去旅游，帮我做一下规划吧"
@@ -37,43 +40,89 @@ https://github.com/CaviraOSS/OpenMemory
 """
 # DEFAULT_TOOLS_LIST = ["command", "write_tmp_file", "read_tmp_file", "update_progress", "call_user"]
 
-shell = PersistentShell()
-tool_executer = ToolExecuter()
-context_manager = ContextManager()
-notifier = Notifier(context_manager)
-DEFAULT_TOOLS_LIST = tool_executer.list_tools()
-print(f"Available tools: {DEFAULT_TOOLS_LIST}")
-# for test only
-# context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
-# context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
+parser = argparse.ArgumentParser()
+parser.add_argument("--load_from_file", type=str, required=False)
+args = parser.parse_args()
+if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
+    print("=====Debug Mode Enabled=====")
+    AUTO_DUMP = os.getenv("IS_DEBUG_ENABLED", "1") == "1"
+    shell = PersistentShell()
+    tool_executer = ToolExecuter()
+    context_manager = ContextManager()
+    if args.load_from_file:
+        context_manager.load(args.load_from_file)
+    if AUTO_DUMP:
+        context_manager.enable_auto_dump()
+    notifier = Notifier(context_manager)
+    DEFAULT_TOOLS_LIST = tool_executer.list_tools()
+    print(f"Available tools: {DEFAULT_TOOLS_LIST}")
+    # for test only
+    # context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
+    # context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
 
+    claim_agent = ClaimerAgent(notifier, context_manager)
+    plan_agent = PlannerAgent(context_manager, notifier, tool_executer, ["call_user"])
+    summarizer_agent = SummarizerAgent(notifier, context_manager)
+    agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
+    if not context_manager.is_clarified:
+        sys_prompt, msg = claim_agent.run(TEST_CASE_10)
+    if not context_manager.is_planned:
+        is_accomplished = plan_agent.run()
+    else:
+        is_accomplished = context_manager.is_accomplished()
 
+    while not is_accomplished:
+        # agent factory 无论如何都会读取到最新的plan，她的信息也不在context_manager中，所以无需刷星
+        agent = agent_factory.run()
+        if not context_manager.is_executing:
+            print("=====1145141919810=====")
+            resp = agent.run("继续执行给你的任务")
+        else:
+            resp = agent.run("")
+        print("=====Agent Response===== \n", resp)
+        print("=====Current Plan=====")
+        print(context_manager.get_formatted_plan(context_manager.task_state))
+        is_accomplished = context_manager.is_accomplished() or plan_agent.run()
 
-# agent = Agent(instruction="You are a helpful assistant.", tool_name_list=DEFAULT_TOOLS_LIST, tool_executer=tool_executer, shell=shell)
-claim_agent = ClaimerAgent(notifier, context_manager)
-plan_agent = PlannerAgent(context_manager, notifier)
-agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
-sys_prompt, msg = claim_agent.run(TEST_CASE_1)
-is_accomplished = plan_agent.run()
+    print("All tasks accomplished.")
+    print("=====Overview=====")
+    task_plan = context_manager.task_state
+    print(context_manager.get_formatted_plan(task_plan))
+    print("=====Result=====")
+    summary = summarizer_agent.run()
+    print(summary)
+    context_manager.dump()
+else:
+    shell = PersistentShell()
+    tool_executer = ToolExecuter()
+    context_manager = ContextManager()
+    notifier = Notifier(context_manager)
+    DEFAULT_TOOLS_LIST = tool_executer.list_tools()
+    print(f"Available tools: {DEFAULT_TOOLS_LIST}")
+    # for test only
+    # context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
+    # context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
 
-while not is_accomplished:
-    agent = agent_factory.run()
-    resp = agent.run("执行刚刚给你的任务")
-    print("=====Agent Response===== \n", resp)
-    # 把当前子任务的执行反馈加入对话记录
-    current_subtask_index, current_subtask_step_index = context_manager._get_current_indices()
-    current_subtask = context_manager.get_subtask(current_subtask_index)
-    current_subtask_step = context_manager.get_subtask_step(current_subtask_index, current_subtask_step_index)
-    formatted_subtask_step = context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)
-    context_manager.add_dialogue({"role": "assistant", "content": formatted_subtask_step + "\n Execution summary from agent: \n" + resp})
-    
-    print("=====Current Plan=====")
-    print(context_manager.get_formatted_plan(context_manager.task_state))
-    
-    is_accomplished = context_manager.is_accomplished() or plan_agent.run()
+    claim_agent = ClaimerAgent(notifier, context_manager)
+    plan_agent = PlannerAgent(context_manager, notifier, tool_executer, ["call_user"])
+    summarizer_agent = SummarizerAgent(notifier, context_manager)
+    agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
+    sys_prompt, msg = claim_agent.run(TEST_CASE_1)
+    is_accomplished = plan_agent.run()
+    while not is_accomplished:
+        agent = agent_factory.run()
+        resp = agent.run("执行给你的任务")
+        print("=====Agent Response===== \n", resp)
+        print("=====Current Plan=====")
+        print(context_manager.get_formatted_plan(context_manager.task_state))
+        is_accomplished = context_manager.is_accomplished() or plan_agent.run()
 
-print("All tasks accomplished.")
-print("=====Overview=====")
-task_plan = context_manager.task_state
-print(context_manager.get_formatted_plan(task_plan))
+    print("All tasks accomplished.")
+    print("=====Overview=====")
+    task_plan = context_manager.task_state
+    print(context_manager.get_formatted_plan(task_plan))
+    print("=====Result=====")
+    summary = summarizer_agent.run()
+    print(summary)
+    context_manager.dump() 
     

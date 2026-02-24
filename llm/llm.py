@@ -62,4 +62,5 @@ def llm_call_json_schema(messages: list, tools: list, jsonSchema: str):
         response_format=registered_schema[jsonSchema],
         max_tokens=20 * 1024,
     )
-    return resp.choices[0].finish_reason, resp.choices[0].message.parsed
+    return resp.choices[0].finish_reason, resp.choices[0].message
+

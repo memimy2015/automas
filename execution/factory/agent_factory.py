@@ -59,6 +59,7 @@ class AgentFactory():
         self.messages[0] = {"role": "system", "content": DEFAULT_INSTRUCTION.format(formatted_subtask, formatted_subtask_step)}
         self.messages[1] = {"role": "user", "content": "Now give your suggested role and task specification for prompt of sub-objective."}
         _, resp = llm_call_json_schema(self.messages, [], "PromptEngineer")
+        resp = resp.parsed
         instruction = {
             "role_setting": resp.role_setting,
             "task_specification": resp.task_specification,

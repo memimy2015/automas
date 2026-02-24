@@ -30,15 +30,21 @@ def get_skill_list():
                         match = re.search(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
                         if match:
                             frontmatter = match.group(1)
-                            
-                            # Simple parsing of name and description
-                            name_match = re.search(r'name:\s*(.+)', frontmatter)
-                            desc_match = re.search(r'description:\s*(.+)', frontmatter)
-                            
-                            if name_match and desc_match:
-                                name = name_match.group(1).strip()
-                                desc = desc_match.group(1).strip()
-                                skill_list.append(f"skill name: {name}\nskill description: {desc}\nskill usage instructions: {skill_md_path}\n\n")
+                            fields = {}
+                            for line in frontmatter.splitlines():
+                                if ":" not in line:
+                                    continue
+                                key, value = line.split(":", 1)
+                                key = key.strip()
+                                value = value.strip()
+                                if key:
+                                    fields[key] = value
+                            if fields:
+                                lines = []
+                                for key, value in fields.items():
+                                    lines.append(f"{key}: {value}")
+                                lines.append(f"skill usage instructions: {skill_md_path}")
+                                skill_list.append("\n".join(lines) + "\n")
                 except Exception as e:
                     print(f"Error reading {skill_md_path}: {e}")
                     

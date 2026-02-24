@@ -1,3 +1,5 @@
+from typing import List
+from datetime import datetime
 from execution.agent.prompt import PROJECT_DIR
 from control.context_manager import ContextManager
 from resources.tools.persistent_shell import PersistentShell
@@ -9,6 +11,12 @@ from execution.agent.prompt import render
 from typing import Optional
 from llm.json_schemas import Subtask, SubtaskSteps, PlannedTasks
 from .notifier import Notifier
+import os
+
+CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+AUTOMAS_DIR = os.path.dirname(CURRENT_FILE_DIR)  # Go up two levels: execution/agent -> execution -> automas
+DEFAULT_TMP_DIR = os.path.join(AUTOMAS_DIR, "tmp")
+DEFAULT_OUTPUT_DIR = os.path.join(AUTOMAS_DIR, "output")
 
 CN_PROMPT = """
 你是一个任务规划专家，现在需要根据用户提出的具体问题，按照“问题拆解→子问题验证→流程优化”的逻辑，将问题分解为更细致、无遗漏的子问题（需覆盖问题的核心要素、关联条件及潜在边界），并为每个子问题设计顺畅且正确的解决流程：首先明确子问题的目标与输入输出要求，其次规划分步骤的执行逻辑（含关键判断节点与应对方案），最后说明子问题间的衔接关系，确保整体流程可落地、无逻辑断层。
@@ -24,10 +32,48 @@ For each sub-problem, you need to design a smooth and correct solution process, 
 4. sub-objective must be clear and executable and do not have sub-objective with repeated content or obvious overlap, if there is, you can merge them into one sub-objective or let new sub-objective utilizes the existing one's content rather than creates it again.
 
 You will serve for following usages:
-- Given a user query, do planning for it and then creates a hierarchical task list and next step to do.
+- Given a user query, do planning for it and then creates a hierarchical task list and next step to do. If current context is vague and can not give a clear plan, you can ask user for more information by calling call_user tool.
 - Given a execution result from agent, update the task list and do some adjustment about planning if needed, then dispatch next step to agent.
 - Given user chat history, current task list and overall goal, do planning for the user query, if there is no adjustment about planning, dispatch next step to agent, otherwise, set need_replan to True and give replan_reason and task_specification, then user will provide more information according to task_specification provided by you or do the judgment and this will be demonstrated in section 'Chat History', latest message will be the last one. Once you receive user messages, try to do planning again.
 
+# tool use specification
+
+## call_user
+
+The `call_user` tool may be invoked only when the user’s objective, constraints, or expected outcome are unclear, and clarification is required to ensure the final result aligns with the user’s intent.
+
+It must **not** be used for:
+
+* Resolving implementation-level uncertainties (e.g., how to use skills or internal tools).
+* Managing execution details that should be handled by subagents.
+* Redundant clarification, such as permission to continue operations.
+* Asking whether to proceed with standard operations, with or without side effects.
+
+You should:
+
+* Use this tool strictly as a last resort when the user’s expectations or success criteria are ambiguous.
+* Focus only on clarifying the desired outcome, not the execution strategy.
+
+
+
+
+# final output directory
+- final output directory path: {OUTPUT_DIR}
+- Determine whether the results of processing or analysis need to be generated in the form of files based on user requirements. All deliverables shall be placed in the final output directory of the current project. If this directory does not exist, create it.
+- You must create a folder in the final output directory to store the deliverables, named what you think is appropriate.
+- You must not create or delete any file other than final output folder and tmp folder.
+
+# tmp directory
+- tmp directory path: {TMP_DIR}
+- All temporary files generated during the process are stored in the tmp directory, do not delete temporary files.
+
+# Project directory
+- project directory path(PROJECT_DIR): {PROJECT_DIR}
+- You **must not** create any file or folder in the project directory, put them to final output or tmp directory.
+
+# note
+When reading and writing files, attention should be paid to the issue of **Chinese character encoding**. Do not display garbled Chinese characters.
+For example, register Arial Unicode MS for Chinese support or use command line to execute `fc-list :lang=zh | head -5` to check the available Chinese fonts and use these font when generating pdf.
 
 # Specific requirements
 - SubtaskSteps object is the only object that contains executable information, therefore you must make sure objective in Subtask object is not an empty list.
@@ -63,21 +109,6 @@ latest task list:
 # Overall goal
 Current overall goal: {OverallGoal}
 
-# Replan schedule (if needed)
-
-First, review all completed tasks and subtasks. 
-If a completed task or subtask is not affected by the current changes, keep it unchanged in the next plan.
-
-Then, determine the next step to execute.
-
-In the `next_step` object:
-- `objective_index` refers to the index of the objective in the task list.
-- `sub_objective_index` refers to the index of the sub-objective within that objective.
-- Both indices are 0-based.
-
-# Project directory
-- project directory path(PROJECT_DIR): {PROJECT_DIR}
-
 
 # Output format
 JSON format
@@ -88,9 +119,8 @@ REPLAN_SCHEDULE = """
 # Replan schedule (if needed)
 
 First, review all completed tasks and subtasks. 
-If a completed task or subtask is not affected by the current changes, keep it unchanged in the next plan.
-
-Then, determine the next step to execute.
+If a completed task or subtask is not affected by the current changes, keep it unchanged in the next plan, especially the agent_id of a sub-objective.
+Then, try to replan according to information in previous chat history.
 
 In the `next_step` object:
 - `objective_index` refers to the index of the objective in the task list.
@@ -99,22 +129,77 @@ In the `next_step` object:
 """
 
 class PlannerAgent:
-    def __init__(self, context_manager: ContextManager, notifier: Notifier):
+    def __init__(self, context_manager: ContextManager, notifier: Notifier, tool_executer: ToolExecuter, tool_name_list: list = ["call_user", "read_tmp_file"]):
         self.messages = []
         self.context_manager = context_manager
         self.notifier = notifier
         self.goal = None
-        prompt = DEFAULT_INSTRUCTION.format(
-            PROJECT_DIR=context_manager.get_project_dir(),
-            ChatHistory=self.context_manager.get_formatted_dialogue(), 
-            OverallGoal=self.context_manager.get_overall_goal(), 
-            TaskList=self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0])
-        )
-        self.messages.append({"role": "system", "content": prompt})
+        self.tool_executer = tool_executer
+        self.tool_name_list = tool_name_list
+        self.messages.append({"role": "system", "content": "PROMPT_PLACEHOLDER"})
         self.messages.append({"role": "user", "content": "Now start planning the task."})
+        agent_id, channel = self.context_manager.get_consistent_agent_identity("Planner")
+        if agent_id is not None and channel:
+            self.agent_id = agent_id
+            self.identity = channel.rsplit("_main", 1)[0]
+            if channel not in self.context_manager.dialogue_history:
+                self.context_manager.add_active_subagent(self.agent_id, channel)
+        else:
+            self.agent_id = self.context_manager.obtain_id()
+            self.identity = f"PlannerAgent_{self.agent_id}"
+            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Planner")
 
+    def append_message(self, message: dict, channel: str | List[str] = None):
+        """
+        Append a message to the message list of the channel and current agent message list.
+        Args:
+            message (dict): The message to append.
+            channel (str, optional): The channel to append the message to. Defaults to None.
+        """
+        if channel is None:
+            channel = self.identity + "_main"
+        self.messages.append(message)
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}])
 
+    def set_channel_msg(self, channel: str = None):
+        """
+        Planner ONLY!!!!!
+        set the message list of the channel to the current message list.
+        """
+        if channel is None:
+            channel = self.identity + "_main"
+        self.context_manager.dialogue_history[channel] = self.messages
 
+    # def run(self):
+    #     """
+    #     执行规划任务
+    #     Args:
+    #         None
+    #     """
+    #     print("=====PlannerAgent Started=====")
+    #     # Get updated task status
+    #     self._prepare_context()
+        
+    #     # Planning
+    #     finish_reason, resp = llm_call_json_schema(self.messages, [], "Planner")
+    #     resp = resp.parsed
+    #     print(resp.model_dump_json(indent=2))
+    #     self.context_manager.set_task_status(resp)
+
+    #     while resp.need_replan:
+    #         print(f"=====Replan Required, reason: {resp.replan_reason}=====")
+    #         for model_query in resp.task_specification:
+    #             user_resp = self.notifier.call_user(self.agent_id, "[Planner]" + model_query.query, in_channel=self.identity + "_main")
+    #         self._prepare_context()
+    #         finish_reason, resp = llm_call_json_schema(self.messages, [], "Planner")
+    #         print(resp.model_dump_json(indent=2))
+    #         # 需更新活跃agent
+    #         self.context_manager.refresh_active_subagent(resp)
+    #         self.context_manager.set_task_status(resp)
+    #     print("=====PlannerAgent Finished=====")
+    #     return resp.is_mission_accomplished
+
+    # call user tool   
     def run(self):
         """
         执行规划任务
@@ -122,34 +207,69 @@ class PlannerAgent:
             None
         """
         print("=====PlannerAgent Started=====")
-        # Get updated task status
-        self._prepare_context()
-        
+        self.context_manager.set_is_planned(False)
+        tools = []
+        for tool_name in self.tool_name_list:
+            tool = self.tool_executer.get_tool(tool_name)
+            tool["function"]["strict"] = True
+            tools.append(tool)
+        need_replan = False
         # Planning
-        finish_reason, resp = llm_call_json_schema(self.messages, [], "Planner")
-        print(resp.model_dump_json(indent=2))
-        self.context_manager.set_task_status(resp)
-        
-        while resp.need_replan:
-            print(f"=====Replan Required, reason: {resp.replan_reason}=====")
-            for model_query in resp.task_specification:
-                user_resp = self.notifier.call_user("[Planner]" + model_query.query)
-            self._prepare_context()
-            finish_reason, resp = llm_call_json_schema(self.messages, [], "Planner")
-            print(resp.model_dump_json(indent=2))
-            self.context_manager.set_task_status(resp)
+        while True:
+            # Get updated task status
+            self._prepare_context(need_replan)
+            finish_reason, resp = llm_call_json_schema(self.messages, tools, "Planner")
+            print(finish_reason)
+            if finish_reason != "tool_calls":
+                resp = resp.parsed
+                print(resp.model_dump_json(indent=2))
+                self.context_manager.apply_planned_tasks(resp, need_replan)
+                break
+            else:
+                print("=====REPLAN REQUIRED=====")
+                need_replan = True
+                tool_name = resp.tool_calls[0].function.name
+                tool_args = json.loads(resp.tool_calls[0].function.arguments)
+                if tool_name != "call_user":
+                    self.append_message(resp.model_dump(), channel=self.identity + "_main")
+                if tool_name == "call_user":
+                    tool_args["invoker_agent_id"] = self.agent_id
+                    tool_args["in_channel"] = self.identity + "_main"
+                    tool_args["out_channel"] = "user"
+                tool_result = self.tool_executer.call(tool_name, tool_args) # call_user无需再planner记录，只需要让user的信道存在这个问答信息就可以，_prepare_context会加载的
+                tool_call_id = resp.tool_calls[0].id
+                if tool_name != "call_user":
+                    self.append_message({"role": "tool", "content": tool_result, "tool_call_id": tool_call_id, "tool_name": tool_name}, channel=self.identity + "_main")
+                
         print("=====PlannerAgent Finished=====")
+        self.context_manager.set_is_planned(True)
         return resp.is_mission_accomplished
         
-    def _prepare_context(self, need_replan: bool = False, replan_reason: str = ""):
+    
+    def _prepare_context(self, need_replan: bool = False):
+        """
+        Prepare the context for the planner agent.
+        会提取目前的所有聊天记录到ChatHistory字段中，
+        并根据当前的任务状态和目标，更新TaskList字段。
+        """
+        self.context_manager.handle_pending_tool_call(self.tool_executer, self.agent_id, self.identity + "_main")
         updated_prompt = DEFAULT_INSTRUCTION.format(
             PROJECT_DIR=self.context_manager.get_project_dir(),
-            ChatHistory=self.context_manager.get_formatted_dialogue(), 
+            ChatHistory=self.context_manager.get_dialogue(filter=["*_summary", "user", self.identity + "_main"], formatted=True), 
             OverallGoal=self.context_manager.get_overall_goal(), 
-            TaskList=self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0])
+            TaskList=self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]),
+            TMP_DIR=DEFAULT_TMP_DIR,
+            OUTPUT_DIR=DEFAULT_OUTPUT_DIR,
         )
         self.messages[0] = {"role": "system", "content": updated_prompt}
+        # self.messages[1] = {
+        #     "role": "user", "content": "Now start planning the task." if not need_replan else
+        #                     "Replan required, reason: " + replan_reason + "\n " + REPLAN_SCHEDULE
+        # }
         self.messages[1] = {
-            "role": "user", "content": "Now start planning the task." if need_replan else
-                            "Replan required, reason: " + replan_reason + "\n " + REPLAN_SCHEDULE
-        }      
+            "role": "user", "content": "Now start planning the task." if not need_replan else
+                            "user has provided more information, you can try to replan or continue with the current plan." + "\n " + REPLAN_SCHEDULE
+        }
+        self.set_channel_msg(channel=self.identity + "_main")
+        
+        

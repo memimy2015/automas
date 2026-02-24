@@ -2,6 +2,8 @@ from resources.tools.progress_operation import update_progress
 from resources.tools.persistent_shell import PersistentShell
 from resources.tools.file_operation import write_file, read_file
 from resources.tools.proactive_query import call_user
+import json
+import os
 
 
 
@@ -10,6 +12,8 @@ class ToolExecuter:
         self.tools_desc_map = {}
         self.shell = PersistentShell()
         self.shell.create_terminal()
+        self.mock_enabled = os.getenv("IS_MOCK_ENABLED", "0") == "1"
+        self.mock_map = self._load_mock_map()
         self.tools_desc_map["command"] = {
             "type": "function",
             "function": {
@@ -159,8 +163,29 @@ class ToolExecuter:
                 }
             }
         }
+
+    def _load_mock_map(self) -> dict:
+        if not self.mock_enabled:
+            return {}
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(current_file_dir))
+        mock_path = os.path.join(project_root, "mock", "tool_mock.json")
+        if not os.path.exists(mock_path):
+            return {}
+        with open(mock_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _mock_key(self, tool_name: str, args: dict) -> str:
+        payload = json.dumps(args, ensure_ascii=False, sort_keys=True)
+        return f"{tool_name}:{payload}"
     
     def call(self, tool_name: str, args: dict):
+        if self.mock_enabled:
+            key = self._mock_key(tool_name, args)
+            if key in self.mock_map:
+                return self.mock_map[key]
+            print(f"MOCK_NOT_FOUND: {tool_name}")
+            return f"MOCK_NOT_FOUND: {tool_name}"
         if tool_name == "command":
             return self.shell.execute_command(args["command"])
         elif tool_name == "write_tmp_file":
@@ -172,7 +197,7 @@ class ToolExecuter:
         # elif tool_name == "submit":
         #     return submit(args["task_name"], args["task_summary"], args["task_status"], args["resources"])
         elif tool_name == "call_user":
-            return call_user(args["query"])
+            return call_user(args["query"], args["invoker_agent_id"], args["in_channel"], args["out_channel"])
         return f"Tool {tool_name} not found"
     
     def get_tool(self, tool_name: str):

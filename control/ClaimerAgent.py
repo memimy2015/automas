@@ -1,3 +1,5 @@
+from typing import List
+from datetime import datetime
 from control.context_manager import ContextManager
 from resources.tools.persistent_shell import PersistentShell
 from resources.tools.skill_tool import get_skill_list
@@ -42,17 +44,41 @@ class ClaimerAgent:
         self.messages = []
         # prompt = DEFAULT_INSTRUCTION.format(access_knowledgeDB())
         prompt = DEFAULT_INSTRUCTION.format(PROJECT_DIR=context_manager.get_project_dir())
-        self.messages.append({"role": "system", "content": prompt})
         self.notifier = notifier
         self.context_manager = context_manager
+        agent_id, channel = self.context_manager.get_consistent_agent_identity("Claimer")
+        if agent_id is not None and channel:
+            self.agent_id = agent_id
+            self.identity = channel.rsplit("_main", 1)[0]
+            if channel not in self.context_manager.dialogue_history:
+                self.context_manager.add_active_subagent(self.agent_id, channel)
+        else:
+            self.agent_id = self.context_manager.obtain_id()
+            self.identity = f"Claimer_{self.agent_id}"
+            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Claimer")
+            self.append_message({"role": "system", "content": prompt}, channel=self.identity + "_main")
+        
+    def append_message(self, message: dict, channel: str | List[str] = None):
+        """
+        Append a message to the message list of the channel and current agent message list.
+        Args:
+            message (dict): The message to append.
+            channel (str, optional): The channel to append the message to. Defaults to None.
+        """
+        if channel is None:
+            channel = self.identity + "_main"
+        self.messages.append(message)
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}])
 
     def run(self, query: str):
         print("=====ClaimerAgent Started=====")
         if self.context_manager.get_available_resources():
             formatted_available_resources = self.context_manager.get_formatted_available_resources()
-            self.messages.append({"role": "user", "content": formatted_available_resources})
-        self.messages.append({"role": "user", "content": query})
+            self.append_message({"role": "user", "content": f"当前可用资源：\n {formatted_available_resources}"}, channel=[self.identity + "_main", "user"]) # 这里可能后续需要改，会把所有资源加入消息历史，可能会很长，至少不应该发到user信道被planner接受
+        self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"])
+        self._prepare_context()
         finish_reason, resp = llm_call_json_schema(self.messages, [], "Claimer")
+        resp = resp.parsed
         print(f'Finish Reason: {finish_reason}')
         # process json output
         while resp.need_more_info:
@@ -61,21 +87,24 @@ class ClaimerAgent:
                 i += 1
                 model_query = model_query.query
                 print(f'Model query: {model_query} | ({i} / {len(resp.contents)})')
-                user_resp = self.notifier.call_user(model_query)
-                self.messages.append({"role": "assistant", "content": model_query})
-                self.messages.append({"role": "user", "content": user_resp})
-            # self.messages.append({"role": "user", "content": "你还有想要我补充的吗，没有的话就下一步吧。"})
+                user_resp = self.notifier.call_user(model_query, in_channel=self.identity + "_main", out_channel="user")
+                # 这里不用append_message，因为call_user已经append了
+                self.append_message({"role": "assistant", "content": model_query}, channel=self.identity + "_main")
+                self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main")
+                
+            self._prepare_context()
             finish_reason, resp = llm_call_json_schema(self.messages, [], "Claimer")
+            resp = resp.parsed
         print(f"Source reference: \n {resp.resource_reference}")
         print(f"Refined objective: \n {resp.refined_objective}")
-        self.messages.append({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"})
+        self.append_message({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"}, channel=[self.identity + "_main", "user"])
         self.context_manager.update_overall_goal(resp.refined_objective)
         for resource_ref in resp.resource_reference:
-            self.messages.append({"role": "user", "content": f"资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"})
+            self.append_message({"role": "user", "content": f"可用资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"}, channel=[self.identity + "_main", "user"])
             self.context_manager.add_available_resources({resource_ref.description: resource_ref})
-        for msg in self.messages[1:]:
-            self.context_manager.add_dialogue(msg)
         print("=====ClaimerAgent Finished=====")
+        self.context_manager.is_clarified = True
         return self.messages[0], self.messages[1:]
         
-        
+    def _prepare_context(self):
+        self.messages = self.context_manager.get_dialogue(filter=[self.identity + "_main"], formatted=False)
