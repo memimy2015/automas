@@ -119,7 +119,7 @@ class Agent:
                 self.append_message({"role": "user", "content": DEFAULT_SUBMIT_PROMPT}, usage.model_dump(), channel=self.identity + "_main")
                 try:
                     self._prepare_context()
-                    finish_reason, resp_msg = llm_call_json_schema(self.messages, [], "Submit")
+                    finish_reason, resp_msg, submit_usage = llm_call_json_schema(self.messages, [], "Submit")
                     resp_msg = resp_msg.parsed
                     resources = {}
                     for resource in resp_msg.resource_reference:

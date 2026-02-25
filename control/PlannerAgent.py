@@ -219,7 +219,7 @@ class PlannerAgent:
         while True:
             # Get updated task status
             self._prepare_context(need_replan)
-            finish_reason, resp = llm_call_json_schema(self.messages, tools, "Planner")
+            finish_reason, resp, usage = llm_call_json_schema(self.messages, tools, "Planner")
             print(finish_reason)
             if finish_reason != "tool_calls":
                 resp = resp.parsed

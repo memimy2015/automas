@@ -2,7 +2,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from uuid import uuid4
 from typing import Literal
-class ProacvtiveQuery(BaseModel):
+class ProactiveQuery(BaseModel):
     query: str = Field(description="向用户提出询问补充信息的问题", default="")
 
 class ResourceReference(BaseModel):
@@ -12,7 +12,7 @@ class ResourceReference(BaseModel):
 
 class ClaimerSchema(BaseModel):
     need_more_info: bool = Field(default=False, description="是否需要更多信息")
-    contents: list[ProacvtiveQuery] = Field(description="为了补充不足的信息而用户提出的问题列表", default_factory=list)
+    contents: list[ProactiveQuery] = Field(description="为了补充不足的信息而用户提出的问题列表", default_factory=list)
     refined_objective: str = Field(description="用户对任务的完善描述", default="")
     resource_reference: list[ResourceReference] = Field(description="用户对任务的完善描述的资源引用", default_factory=list)
 
@@ -45,7 +45,7 @@ class PlannedTasks(BaseModel):
     is_mission_accomplished: bool = Field(default=False, description="是否所有子任务都已完成")
     overall_goal: str = Field(description="总目标", default="")
     replan_reason: str = Field(description="重新规划的原因", default="")
-    task_specification: list[ProacvtiveQuery] = Field(description="重新规划的任务时，以提问方式向用户询问需要补充的信息的列表，提问最好给出选项。", default_factory=list)
+    task_specification: list[ProactiveQuery] = Field(description="重新规划的任务时，以提问方式向用户询问需要补充的信息的列表，提问最好给出选项。", default_factory=list)
     
 class FactoryOutput(BaseModel):
     role_setting: str = Field(description="工厂角色信息的设置", default="")

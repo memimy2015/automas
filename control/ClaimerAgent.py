@@ -6,7 +6,7 @@ from resources.tools.skill_tool import get_skill_list
 import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call, llm_call_json_schema
-from llm.json_schemas import ProacvtiveQuery, ClaimerSchema
+from llm.json_schemas import ProactiveQuery, ClaimerSchema
 from execution.agent.prompt import render
 from .notifier import Notifier
 
@@ -58,7 +58,7 @@ class ClaimerAgent:
             self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Claimer")
             self.append_message({"role": "system", "content": prompt}, channel=self.identity + "_main")
         
-    def append_message(self, message: dict, channel: str | List[str] = None):
+    def append_message(self, message: dict, channel: str | List[str] = None, usage: dict = None):
         """
         Append a message to the message list of the channel and current agent message list.
         Args:
@@ -68,7 +68,7 @@ class ClaimerAgent:
         if channel is None:
             channel = self.identity + "_main"
         self.messages.append(message)
-        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}])
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}])
 
     def run(self, query: str):
         print("=====ClaimerAgent Started=====")
@@ -77,7 +77,7 @@ class ClaimerAgent:
             self.append_message({"role": "user", "content": f"当前可用资源：\n {formatted_available_resources}"}, channel=[self.identity + "_main", "user"]) # 这里可能后续需要改，会把所有资源加入消息历史，可能会很长，至少不应该发到user信道被planner接受
         self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"])
         self._prepare_context()
-        finish_reason, resp = llm_call_json_schema(self.messages, [], "Claimer")
+        finish_reason, resp, usage = llm_call_json_schema(self.messages, [], "Claimer")
         resp = resp.parsed
         print(f'Finish Reason: {finish_reason}')
         # process json output
@@ -93,7 +93,7 @@ class ClaimerAgent:
                 self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main")
                 
             self._prepare_context()
-            finish_reason, resp = llm_call_json_schema(self.messages, [], "Claimer")
+            finish_reason, resp, usage = llm_call_json_schema(self.messages, [], "Claimer")
             resp = resp.parsed
         print(f"Source reference: \n {resp.resource_reference}")
         print(f"Refined objective: \n {resp.refined_objective}")

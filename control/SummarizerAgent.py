@@ -5,7 +5,7 @@ from resources.tools.skill_tool import get_skill_list
 import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call, llm_call_json_schema
-from llm.json_schemas import ProacvtiveQuery, ClaimerSchema
+from llm.json_schemas import ProactiveQuery, ClaimerSchema
 from execution.agent.prompt import render
 from .notifier import Notifier
 from datetime import datetime
@@ -69,7 +69,7 @@ class SummarizerAgent:
             self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Summarizer")
             self.append_message({"role": "system", "content": prompt}, self.identity + "_main")
 
-    def append_message(self, message: dict, channel: str | List[str] = None):
+    def append_message(self, message: dict, channel: str | List[str] = None, usage: dict = None):
         """
         Append a message to the message list of the channel and current agent message list.
         Args:
@@ -79,7 +79,7 @@ class SummarizerAgent:
         if channel is None:
             channel = self.identity + "_main"
         self.messages.append(message)
-        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}])
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}])
     
     def extend_messages(self, messages: list):
         self.messages.extend(messages)
@@ -106,7 +106,7 @@ class SummarizerAgent:
             },
             self.identity + "_main"
         )
-        finish_reason, resp, _ = llm_call(self.messages, [])
+        finish_reason, resp, usage = llm_call(self.messages, [])
         self.append_message(
             {
                 "role": "assistant",
