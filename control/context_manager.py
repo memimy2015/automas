@@ -309,6 +309,8 @@ class ContextManager:
     def add_dialogue(self, agent_id: int, channel: str | List[str], dialogue: List[Dict[str, Any]]):
         """
         Add a dialogue message to the dialogue history.
+        If agent is inactive, raise **ValueError**.
+        If channel is not active, this function will **create a new channel** by add_active_subagent_channel.
         """
         if self.active_subagents.get(agent_id, None) is None:
             print(f"Agent {agent_id} is not active.")
@@ -502,7 +504,7 @@ class ContextManager:
             path = self._build_dump_path(self.auto_dump_dir, reason)
         self.last_dump_reason = reason
         self.last_dump_params = params
-        print(f"Dumping context manager state to {path}\n Reason: {reason}\n Params: {params}\n")
+        # print(f"Dumping context manager state to {path}\n Reason: {reason}\n Params: {params}\n")
         context = self._to_serializable(self._get_dump_state())
         with open(path, "w", encoding="utf-8") as f:
             json.dump(context, f, indent=2, ensure_ascii=False)

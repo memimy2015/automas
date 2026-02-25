@@ -65,7 +65,7 @@ if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
     summarizer_agent = SummarizerAgent(notifier, context_manager)
     agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
     if not context_manager.is_clarified:
-        sys_prompt, msg = claim_agent.run(TEST_CASE_10)
+        sys_prompt, msg = claim_agent.run(TEST_CASE_7)
     if not context_manager.is_planned:
         is_accomplished = plan_agent.run()
     else:
@@ -76,7 +76,7 @@ if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
         agent = agent_factory.run()
         if not context_manager.is_executing:
             print("=====1145141919810=====")
-            resp = agent.run("继续执行给你的任务")
+            resp = agent.run("执行给你的任务")
         else:
             resp = agent.run("")
         print("=====Agent Response===== \n", resp)

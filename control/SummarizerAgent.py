@@ -57,7 +57,7 @@ class SummarizerAgent:
         # 注册 Agent id 和 channel
         # self.context_manager.add_active_subagent(self.agent_id, self.identity + "_main")
         # self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Summarizer")
-        agent_id, channel = self.context_manager.get_consistent_agent_identity("Planner")
+        agent_id, channel = self.context_manager.get_consistent_agent_identity("Summarizer")
         if agent_id is not None and channel:
             self.agent_id = agent_id
             self.identity = channel.rsplit("_main", 1)[0]
@@ -65,8 +65,8 @@ class SummarizerAgent:
                 self.context_manager.add_active_subagent(self.agent_id, channel)
         else:
             self.agent_id = self.context_manager.obtain_id()
-            self.identity = f"PlannerAgent_{self.agent_id}"
-            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Planner")
+            self.identity = f"SummarizerAgent_{self.agent_id}"
+            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Summarizer")
             self.append_message({"role": "system", "content": prompt}, self.identity + "_main")
 
     def append_message(self, message: dict, channel: str | List[str] = None):

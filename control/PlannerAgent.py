@@ -53,6 +53,7 @@ You should:
 
 * Use this tool strictly as a last resort when the user’s expectations or success criteria are ambiguous.
 * Focus only on clarifying the desired outcome, not the execution strategy.
+* Pay attention to the aesthetics of the format; Markdown format is recommended.
 
 
 

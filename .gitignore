@@ -159,6 +159,9 @@ cython_debug/
 .trae/
 .test.py
 
+# test
+coze_test.py
+
 # macOS
 .DS_Store
 
@@ -173,3 +176,6 @@ dump/
 
 # essay
 # essay/
+
+# cleanup
+whole_cleanup.sh
