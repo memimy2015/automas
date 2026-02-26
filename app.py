@@ -42,6 +42,7 @@ https://github.com/CaviraOSS/OpenMemory
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--load_from_file", type=str, required=False)
+parser.add_argument("--query", type=str, required=False)
 args = parser.parse_args()
 if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
     print("=====Debug Mode Enabled=====")
@@ -65,7 +66,7 @@ if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
     summarizer_agent = SummarizerAgent(notifier, context_manager)
     agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
     if not context_manager.is_clarified:
-        sys_prompt, msg = claim_agent.run(TEST_CASE_7)
+        sys_prompt, msg = claim_agent.run(args.query if args.query else TEST_CASE_7)
     if not context_manager.is_planned:
         is_accomplished = plan_agent.run()
     else:

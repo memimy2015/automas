@@ -87,7 +87,7 @@ class ClaimerAgent:
                 i += 1
                 model_query = model_query.query
                 print(f'Model query: {model_query} | ({i} / {len(resp.contents)})')
-                user_resp = self.notifier.call_user(model_query, in_channel=self.identity + "_main", out_channel="user")
+                user_resp = self.notifier.call_user(model_query, invoker_agent_id=self.agent_id, in_channel=self.identity + "_main", out_channel="user")
                 # 这里不用append_message，因为call_user已经append了
                 self.append_message({"role": "assistant", "content": model_query}, channel=self.identity + "_main")
                 self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main")

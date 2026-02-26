@@ -260,9 +260,11 @@ class ContextManager:
                 print(f"Submitted to {obj_idx + 1}.{sub_idx + 1} {sub_objective.sub_objective}")
             else:
                 print("Invalid sub-objective index.")
+                self._auto_dump("submit_sub_objective", {"error": "Invalid sub-objective index."})
                 raise ValueError("Invalid sub-objective index.")
         else:
             print("Invalid objective index.")
+            self._auto_dump("submit_sub_objective", {"error": "Invalid sub-objective index."})
             raise ValueError("Invalid objective index.")
                 
                 

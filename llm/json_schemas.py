@@ -48,8 +48,8 @@ class PlannedTasks(BaseModel):
     task_specification: list[ProactiveQuery] = Field(description="重新规划的任务时，以提问方式向用户询问需要补充的信息的列表，提问最好给出选项。", default_factory=list)
     
 class FactoryOutput(BaseModel):
-    role_setting: str = Field(description="工厂角色信息的设置", default="")
-    task_specification: str = Field(description="任务的详细要求描述，可以是注意事项和步骤，有其他值得提及的也可以补充。", default="")
+    role_setting: str = Field(description="角色身份信息的设置", default="")
+    task_specification: str = Field(description="给出任务的更多信息，如使命、能力边界(如访问权限之类的)、任务注意事项、可能出现的问题和解决方案。markdown格式，注意换行。", default="")
     
 class SubmitMessage(BaseModel):
     task_name: str = Field(..., description="当前任务名称", required=True)
