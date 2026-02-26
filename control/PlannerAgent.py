@@ -130,7 +130,7 @@ In the `next_step` object:
 """
 
 class PlannerAgent:
-    def __init__(self, context_manager: ContextManager, notifier: Notifier, tool_executer: ToolExecuter, tool_name_list: list = ["call_user", "read_tmp_file"]):
+    def __init__(self, context_manager: ContextManager, notifier: Notifier, tool_executer: ToolExecuter, tool_name_list: list = ["call_user", "read_tmp_file", "command"]):
         self.messages = []
         self.context_manager = context_manager
         self.notifier = notifier

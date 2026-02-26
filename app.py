@@ -75,9 +75,10 @@ if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
         # agent factory 无论如何都会读取到最新的plan，她的信息也不在context_manager中，所以无需刷星
         agent = agent_factory.run()
         if not context_manager.is_executing:
-            print("=====1145141919810=====")
+            print("=====New Agent=====")
             resp = agent.run("执行给你的任务")
         else:
+            print("=====Continue=====")
             resp = agent.run("")
         print("=====Agent Response===== \n", resp)
         print("=====Current Plan=====")
