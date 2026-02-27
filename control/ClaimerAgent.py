@@ -1,3 +1,4 @@
+from miscellaneous.cozeloop_preprocess import claimer_process_output
 from typing import List
 from datetime import datetime
 from control.context_manager import ContextManager
@@ -9,6 +10,7 @@ from llm.llm import llm_call, llm_call_json_schema
 from llm.json_schemas import ProactiveQuery, ClaimerSchema
 from execution.agent.prompt import render
 from .notifier import Notifier
+from cozeloop.decorator import observe
 
 def access_knowledgeDB():
     return "None"
@@ -70,6 +72,11 @@ class ClaimerAgent:
         self.messages.append(message)
         self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}])
 
+    @observe(
+        name="claimer",
+        span_type="claimer_span",
+        process_outputs=claimer_process_output,
+    )
     def run(self, query: str):
         print("=====ClaimerAgent Started=====")
         if self.context_manager.get_available_resources():
@@ -77,7 +84,7 @@ class ClaimerAgent:
             self.append_message({"role": "user", "content": f"当前可用资源：\n {formatted_available_resources}"}, channel=[self.identity + "_main", "user"]) # 这里可能后续需要改，会把所有资源加入消息历史，可能会很长，至少不应该发到user信道被planner接受
         self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"])
         self._prepare_context()
-        finish_reason, resp, usage = llm_call_json_schema(self.messages, [], "Claimer")
+        finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
         resp = resp.parsed
         print(f'Finish Reason: {finish_reason}')
         # process json output
@@ -93,7 +100,7 @@ class ClaimerAgent:
                 self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main")
                 
             self._prepare_context()
-            finish_reason, resp, usage = llm_call_json_schema(self.messages, [], "Claimer")
+            finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
             resp = resp.parsed
         print(f"Source reference: \n {resp.resource_reference}")
         print(f"Refined objective: \n {resp.refined_objective}")
@@ -104,7 +111,11 @@ class ClaimerAgent:
             self.context_manager.add_available_resources({resource_ref.description: resource_ref})
         print("=====ClaimerAgent Finished=====")
         self.context_manager.is_clarified = True
-        return self.messages[0], self.messages[1:]
+        return {
+            "Refined_objective": resp.refined_objective,
+            "resource_reference": resp.resource_reference,
+            "total_usage": usage,
+        }
         
     def _prepare_context(self):
         self.messages = self.context_manager.get_dialogue(filter=[self.identity + "_main"], formatted=False)

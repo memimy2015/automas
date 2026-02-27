@@ -478,11 +478,12 @@ class ContextManager:
         if dump:
             self._auto_dump("refresh_active_subagent", {"active_subagents": list(self.active_subagents.keys())})
 
-    def apply_planned_tasks(self, resp: PlannedTasks, need_replan: bool):
+    def apply_planned_tasks(self, resp: PlannedTasks):
         self.set_task_status(resp, dump=False)
-        if need_replan:
-            self.refresh_active_subagent(resp, dump=False)
-        self._auto_dump("apply_planned_tasks", {"need_replan": need_replan})
+        # if need_replan:
+        self.refresh_active_subagent(resp, dump=False)
+        self._auto_dump("apply_planned_tasks", {})
+        
     def clear_active_subagents(self):
         """
         Clear all active subagents and their channels.

@@ -24,7 +24,7 @@ tools = [
     }
 ]
 jsonSchema = "Planner"
-finish_reason, parsed, usage = llm_call_json_schema(messages, tools, jsonSchema)
+finish_reason, parsed, usage = llm_call_json_schema(messages=messages, tools=tools, jsonSchema=jsonSchema)
 print(f"finish_reason: {finish_reason}")
 print(f"parsed: {parsed}")
 print(f"parsed.content: {parsed.tool_calls[0].function.name}")

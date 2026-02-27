@@ -1,3 +1,4 @@
+from miscellaneous.cozeloop_preprocess import planner_process_output
 from typing import List
 from datetime import datetime
 from execution.agent.prompt import PROJECT_DIR
@@ -12,6 +13,7 @@ from typing import Optional
 from llm.json_schemas import Subtask, SubtaskSteps, PlannedTasks
 from .notifier import Notifier
 import os
+from cozeloop.decorator import observe
 
 CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 AUTOMAS_DIR = os.path.dirname(CURRENT_FILE_DIR)  # Go up two levels: execution/agent -> execution -> automas
@@ -201,6 +203,11 @@ class PlannerAgent:
     #     return resp.is_mission_accomplished
 
     # call user tool   
+    @observe(
+        name="planner",
+        span_type="planner_span",
+        process_outputs=planner_process_output,
+    )
     def run(self):
         """
         执行规划任务
@@ -214,21 +221,21 @@ class PlannerAgent:
             tool = self.tool_executer.get_tool(tool_name)
             tool["function"]["strict"] = True
             tools.append(tool)
-        need_replan = False
+        # need_replan = False
         # Planning
         while True:
             # Get updated task status
-            self._prepare_context(need_replan)
-            finish_reason, resp, usage = llm_call_json_schema(self.messages, tools, "Planner")
+            self._prepare_context()
+            finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=tools, jsonSchema="Planner")
             print(finish_reason)
             if finish_reason != "tool_calls":
                 resp = resp.parsed
                 print(resp.model_dump_json(indent=2))
-                self.context_manager.apply_planned_tasks(resp, need_replan)
+                self.context_manager.apply_planned_tasks(resp)
                 break
             else:
-                print("=====REPLAN REQUIRED=====")
-                need_replan = True
+                # print("=====REPLAN REQUIRED=====")
+                # need_replan = True
                 tool_name = resp.tool_calls[0].function.name
                 tool_args = json.loads(resp.tool_calls[0].function.arguments)
                 if tool_name != "call_user":
@@ -244,7 +251,11 @@ class PlannerAgent:
                 
         print("=====PlannerAgent Finished=====")
         self.context_manager.set_is_planned(True)
-        return resp.is_mission_accomplished
+        return {
+            "is_mission_accomplished": resp.is_mission_accomplished,
+            "formatted_plan": self.context_manager.get_formatted_plan(resp),
+            "total_usage": usage,
+        }
         
     
     def _prepare_context(self, need_replan: bool = False):
@@ -267,9 +278,12 @@ class PlannerAgent:
         #     "role": "user", "content": "Now start planning the task." if not need_replan else
         #                     "Replan required, reason: " + replan_reason + "\n " + REPLAN_SCHEDULE
         # }
+        # self.messages[1] = {
+        #     "role": "user", "content": "Now start planning the task." if not need_replan else
+        #                     "user has provided more information, you can try to replan or continue with the current plan." + "\n " + REPLAN_SCHEDULE
+        # }
         self.messages[1] = {
-            "role": "user", "content": "Now start planning the task." if not need_replan else
-                            "user has provided more information, you can try to replan or continue with the current plan." + "\n " + REPLAN_SCHEDULE
+            "role": "user", "content": "Now start planning the task. User may provide more information, you can try to replan a better strategy or continue with the current plan." + "\n " + REPLAN_SCHEDULE
         }
         self.set_channel_msg(channel=self.identity + "_main")
         

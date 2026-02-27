@@ -1,3 +1,4 @@
+from miscellaneous.cozeloop_preprocess import summarizer_process_output
 from typing import List
 from control.context_manager import ContextManager
 from resources.tools.persistent_shell import PersistentShell
@@ -9,6 +10,7 @@ from llm.json_schemas import ProactiveQuery, ClaimerSchema
 from execution.agent.prompt import render
 from .notifier import Notifier
 from datetime import datetime
+from cozeloop.decorator import observe
 
 def access_knowledgeDB():
     return "None"
@@ -84,6 +86,11 @@ class SummarizerAgent:
     def extend_messages(self, messages: list):
         self.messages.extend(messages)
     
+    @observe(
+        name="summarizer",
+        span_type="summarizer_span",
+        process_outputs=summarizer_process_output,
+    )
     def run(self):
         self.extend_messages(
             self.context_manager.get_dialogue(filter=["*_summary", "user", "Claimer*"], formatted=False)
@@ -106,7 +113,7 @@ class SummarizerAgent:
             },
             self.identity + "_main"
         )
-        finish_reason, resp, usage = llm_call(self.messages, [])
+        finish_reason, resp, usage = llm_call(messages=self.messages, tools=[])
         self.append_message(
             {
                 "role": "assistant",
@@ -114,6 +121,6 @@ class SummarizerAgent:
             },
             self.identity + "_main"
         )
-        return resp.content
+        return resp.content, usage
         
         

@@ -1,9 +1,15 @@
+from miscellaneous.cozeloop_preprocess import format_token_usage
+from miscellaneous.cozeloop_preprocess import llm_call_json_schema_process_output
+from miscellaneous.cozeloop_preprocess import llm_call_process_output, llm_call_process_input
+from miscellaneous.cozeloop_preprocess import llm_call_json_schema_process_input
 from .json_schemas import SubmitMessage
 from .json_schemas import FactoryOutput
 from volcenginesdkarkruntime import Ark
 import os
 from pydantic import BaseModel
 from .json_schemas import ClaimerSchema, PlannedTasks
+from cozeloop.decorator import observe
+from cozeloop import flush, get_span_from_context
 api_key = os.environ.get("ARK_API_KEY")
 model = os.environ.get("MODEL")
 
@@ -20,8 +26,14 @@ registered_schema["Planner"] = PlannedTasks
 registered_schema["PromptEngineer"] = FactoryOutput
 registered_schema["Submit"] = SubmitMessage
 
-
-def llm_call(messages: list, tools: list):
+@observe(
+    name="llm_call",
+    span_type="llm_call_span",
+    tags={"mode": 'simple', "node_id": 6076665},
+    process_outputs=llm_call_process_output,
+    process_inputs=llm_call_process_input,
+)
+def llm_call(*, messages: list, tools: list):
     """
     调用模型，返回模型的回复
     """
@@ -41,10 +53,20 @@ def llm_call(messages: list, tools: list):
         tools=tools,
         max_tokens=12 * 1024,
     )
+    formatted_usage = format_token_usage(resp.usage)  
+    get_span_from_context().set_tags({"input_tokens": formatted_usage["prompt_tokens"], "output_tokens": formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"]})
+    flush()
     return resp.choices[0].finish_reason, resp.choices[0].message, resp.usage
 
 # Json schema输出不可用stream参数
-def llm_call_json_schema(messages: list, tools: list, jsonSchema: str):
+@observe(
+    name="llm_call_json_schema",
+    span_type="llm_call_json_schema_span",
+     tags={"mode": 'simple', "node_id": 6076665},
+    process_outputs=llm_call_json_schema_process_output,
+    process_inputs=llm_call_json_schema_process_input,
+)
+def llm_call_json_schema(*, messages: list, tools: list, jsonSchema: str):
     """
     调用模型，返回模型的回复
     """
@@ -62,5 +84,8 @@ def llm_call_json_schema(messages: list, tools: list, jsonSchema: str):
         response_format=registered_schema[jsonSchema],
         max_tokens=20 * 1024,
     )
+    formatted_usage = format_token_usage(resp.usage)  
+    get_span_from_context().set_tags({"input_tokens": formatted_usage["prompt_tokens"], "output_tokens": formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"]})
+    flush()
     return resp.choices[0].finish_reason, resp.choices[0].message, resp.usage
 

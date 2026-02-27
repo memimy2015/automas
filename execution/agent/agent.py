@@ -1,3 +1,4 @@
+from miscellaneous.cozeloop_preprocess import agent_process_output
 from operator import sub
 from datetime import datetime
 from control.context_manager import ContextManager
@@ -11,6 +12,7 @@ from typing import Dict, Any
 from llm.json_schemas import SubmitMessage
 from uuid import uuid4
 import os
+from cozeloop.decorator import observe
 
 DEFAULT_SUBMIT_PROMPT = """
 # Role 
@@ -102,7 +104,12 @@ class Agent:
             self.message_logger(message | self.task_info | {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | usage)
         # 记录Agent消息到上下文管理器
         self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}])
-    
+        
+    @observe(
+        name="agent",
+        span_type="agent_span",
+        process_outputs=agent_process_output,
+    )
     def run(self, query: str):
         self.context_manager.is_executing = True
         if query !=  "":
@@ -112,14 +119,14 @@ class Agent:
             tools.append(self.tool_executer.get_tool(tool_name))    
         while True:
             self._prepare_context()
-            finish_reason, resp_msg, usage = llm_call(self.messages, tools)
+            finish_reason, resp_msg, usage = llm_call(messages=self.messages, tools=tools)
             if finish_reason != "tool_calls":
                 content = resp_msg.content
                 self.append_message({"role": "assistant", "content": content}, usage.model_dump(), channel=self.identity + "_main")
                 self.append_message({"role": "user", "content": DEFAULT_SUBMIT_PROMPT}, usage.model_dump(), channel=self.identity + "_main")
                 try:
                     self._prepare_context()
-                    finish_reason, resp_msg, submit_usage = llm_call_json_schema(self.messages, [], "Submit")
+                    finish_reason, resp_msg, submit_usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Submit")
                     resp_msg = resp_msg.parsed
                     resources = {}
                     for resource in resp_msg.resource_reference:
@@ -134,12 +141,12 @@ class Agent:
                     self.append_message({"role": "user", "content": f"现在处理的子目标概况：\n {formatted_subtask_step} \n 执行概要为：{content}"}, usage.model_dump(), channel=self.identity + "_summary")
                     
                     self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources)
-                    return content
+                    return content, usage, "success"
                 except Exception as e:
                     print(f"submit {self.messages[-1]} \n error: {e}")
                     error_summary = f"Error when submitting task execution results, error message: {e}"
                     self.context_manager.submit_sub_objective(error_summary, "pending", {})
-                    return content
+                    return content, usage, str(e)
             self.append_message(resp_msg.model_dump(), usage.model_dump(), channel=self.identity + "_main")
             tool_call = resp_msg.tool_calls[0]
             tool_name = tool_call.function.name
