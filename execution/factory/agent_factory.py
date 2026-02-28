@@ -10,7 +10,7 @@ from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call
 from typing import Dict, Any
 from miscellaneous.cozeloop_preprocess import agent_factory_process_output
-from cozeloop.decorator import observe
+from miscellaneous.observe import observe
 
 DEFAULT_INSTRUCTION = """
 # Role
@@ -69,6 +69,7 @@ class AgentFactory():
         
         _, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="PromptEngineer")
         resp = resp.parsed
+        self.context_manager.record_agent_factory_output(resp)
         instruction = {
             "role_setting": resp.role_setting,
             "task_specification": resp.task_specification,

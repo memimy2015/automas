@@ -1,6 +1,6 @@
 from resources.tools.progress_operation import update_progress
 from resources.tools.persistent_shell import PersistentShell
-from resources.tools.file_operation import write_file, read_file
+from resources.tools.file_operation import write_file, read_file, load_full_skill_doc
 from resources.tools.proactive_query import call_user
 import json
 import os
@@ -32,11 +32,11 @@ class ToolExecuter:
             }
         }
 
-        self.tools_desc_map["write_tmp_file"] = {
+        self.tools_desc_map["write_file"] = {
             "type": "function",
             "function": {
-                "name": "write_tmp_file",
-                "description": "写入临时文件，包括txt，html，markdown，py等文本内容，主要是为了后续的shell命令执行。如果需要修改文件内容，需要先删除文件，再重新写入完整内容。",
+                "name": "write_file",
+                "description": "写入文件，包括txt，html，markdown，py等文本内容，主要是为了后续的shell命令执行。如果需要修改文件内容，需要先删除文件，再重新写入完整内容。",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -54,17 +54,35 @@ class ToolExecuter:
             }
         }
 
-        self.tools_desc_map["read_tmp_file"] = {
+        self.tools_desc_map["read_file"] = {
             "type": "function",
             "function": {
-                "name": "read_tmp_file",
-                "description": "读取临时文件，包括txt，html，markdown，py等文本内容，主要是为了后续的shell命令执行",    
+                "name": "read_file",
+                "description": "读取文件，包括txt，html，markdown，py等文本内容，主要是为了后续的shell命令执行",    
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "file_path": {
                             "type": "string",
                             "description": "文件路径"
+                        }
+                    },
+                    "required": ["file_path"]
+                }
+            }
+        }
+
+        self.tools_desc_map["load_full_skill_doc"] = {
+            "type": "function",
+            "function": {
+                "name": "load_full_skill_doc",
+                "description": "读取 skills.md 的完整内容",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "file_path": {
+                            "type": "string",
+                            "description": "skills.md 文件路径"
                         }
                     },
                     "required": ["file_path"]
@@ -132,10 +150,12 @@ class ToolExecuter:
             return f"MOCK_NOT_FOUND: {tool_name}"
         if tool_name == "command":
             return self.shell.execute_command(args["command"])
-        elif tool_name == "write_tmp_file":
+        elif tool_name == "write_file":
             return write_file(args["file_path"], args["content"])
-        elif tool_name == "read_tmp_file":
+        elif tool_name == "read_file":
             return read_file(args["file_path"])
+        elif tool_name == "load_full_skill_doc":
+            return load_full_skill_doc(args["file_path"])
         elif tool_name == "update_progress":
             return update_progress(args["info"])
         # elif tool_name == "submit":

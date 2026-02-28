@@ -25,8 +25,8 @@ mock 文件是一个 JSON 对象，键是“工具名 + 参数序列化”的组
 ```json
 {
   "command:{\"command\":\"ls\"}": "file1.txt\nfile2.txt",
-  "read_tmp_file:{\"file_path\":\"/tmp/a.txt\"}": "hello",
-  "write_tmp_file:{\"file_path\":\"/tmp/b.txt\",\"content\":\"hi\"}": "ok",
+  "read_file:{\"file_path\":\"/tmp/a.txt\"}": "hello",  
+  "write_file:{\"file_path\":\"/tmp/b.txt\",\"content\":\"hi\"}": "ok",
   "update_progress:{\"info\":\"step-1\"}": "ok",
   "call_user:{\"query\":\"请选择A或B\",\"invoker_agent_id\":1,\"in_channel\":\"PlannerAgent_1_main\",\"out_channel\":\"user\"}": "A"
 }

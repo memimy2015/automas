@@ -10,7 +10,7 @@ from llm.llm import llm_call, llm_call_json_schema
 from llm.json_schemas import ProactiveQuery, ClaimerSchema
 from execution.agent.prompt import render
 from .notifier import Notifier
-from cozeloop.decorator import observe
+from miscellaneous.observe import observe
 
 def access_knowledgeDB():
     return "None"
@@ -69,7 +69,7 @@ class ClaimerAgent:
         """
         if channel is None:
             channel = self.identity + "_main"
-        self.messages.append(message)
+        # self.messages.append(message)
         self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}])
 
     @observe(
@@ -118,4 +118,4 @@ class ClaimerAgent:
         }
         
     def _prepare_context(self):
-        self.messages = self.context_manager.get_dialogue(filter=[self.identity + "_main"], formatted=False)
+        self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=[self.identity + "_main"], formatted=False)

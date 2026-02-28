@@ -1,3 +1,4 @@
+from llm.json_schemas import FactoryOutput
 import sys
 from collections import defaultdict
 import os
@@ -71,6 +72,10 @@ class ContextManager:
         self.auto_dump_run_dir: Optional[str] = None
         self.last_dump_reason: Optional[str] = None
         self.last_dump_params: Optional[Dict[str, Any]] = None
+        self.last_dump_filepath: Optional[str] = None
+        self.latest_agent_id: Optional[int] = None
+        self.latest_agent_tool_usage: Optional[Dict[str, Any]] = None
+        self.latest_agent_factory_output: Optional[FactoryOutput] = None
         self.loaded_from_dump: bool = False
         self.pending_tool_call_channels: set[str] = set()
         
@@ -82,6 +87,26 @@ class ContextManager:
         self.active_subagents[agent_id].add(default_channel)
         self.consistentAgent2DefaultChannel[agent_name] = default_channel
         self._auto_dump("register_consistent_subagent", {"agent_id": agent_id, "channel": default_channel, "name": agent_name})
+
+    def set_latest_agent(self, agent_id: int):
+        self.latest_agent_id = agent_id
+        self.latest_agent_tool_usage = {
+            "agent_id": agent_id,
+            "tool_usage": {}
+        }
+        self._auto_dump("set_latest_agent", {"agent_id": agent_id})
+
+    def record_tool_usage(self, agent_id: int, tool_name: str):
+        if self.latest_agent_id != agent_id:
+            return
+        if not self.latest_agent_tool_usage:
+            self.latest_agent_tool_usage = {
+                "agent_id": agent_id,
+                "tool_usage": {}
+            }
+        usage = self.latest_agent_tool_usage["tool_usage"]
+        usage[tool_name] = usage.get(tool_name, 0) + 1
+        self._auto_dump("record_tool_usage", {"agent_id": agent_id, "tool_name": tool_name, "count": usage[tool_name]})
         
     def get_project_dir(self) -> str:
         """
@@ -189,13 +214,13 @@ class ContextManager:
         """
         return self.available_resources
     
-    def get_dialogue(self, filter: List[str] = None, formatted: bool = False) -> str | List[Dict[str, Any]]:
+    def get_dialogue(self, invoker_channel: str, filter: List[str] = None, formatted: bool = False) -> str | List[Dict[str, Any]]:
         """
-        Return the formatted dialogue with filter.
+        Return the dialogue with filtered message. It WILL NOT add system prompt from other channel!
         Args:
             filter: List[str] = None, filter the channels to include, empty for all channels.
         Returns:
-            str | List[Dict[str, Any]]: the formatted dialogue or raw messages.
+            str | List[Dict[str, Any]]: the dialogue or raw messages.
         """
         patterns = list(filter or [])
         def is_included(channel_name: str) -> bool:
@@ -209,18 +234,23 @@ class ContextManager:
         messages = []
         for channel in self.dialogue_history:
             if is_included(channel):
-                messages.extend(self.dialogue_history.get(channel))
+                channel_messages = self.dialogue_history.get(channel)
+                if channel == invoker_channel:
+                    messages.extend(channel_messages)
+                else:
+                    messages.extend([m for m in channel_messages if m.get("role") != "system"])
+        
         messages = sorted(messages, key=lambda x: x.get("timestamp", 0))
         if formatted:
             lines = []
             for message in messages:
-                s = ", ".join([f"{k}: {v}" for k, v in message.items() if k != "timestamp"])
+                s = ", ".join([f"{k}: {v}" for k, v in message.items() if k != "timestamp" and k != "usage"])
                 lines.append(s)
             return "\n".join(lines)
         else:
             new_messages = []
             for message in messages:
-                new_messages.append({k: v for k, v in message.items() if k != "timestamp"})
+                new_messages.append({k: v for k, v in message.items() if k != "timestamp" and k != "usage"})
             return new_messages
         
     
@@ -326,6 +356,10 @@ class ContextManager:
                 print(f"Add channel: {c} to dialogue history.")
             self.dialogue_history[c].extend(dialogue)       
         self._auto_dump("add_dialogue", {"channel": channel})
+
+    def record_agent_factory_output(self, output: FactoryOutput):
+        self.latest_agent_factory_output = output
+        self._auto_dump("record_agent_factory_output", {"role_setting": output.role_setting, "task_specification": output.task_specification})
         
     def get_formatted_available_resources(self) -> str:
         """
@@ -507,6 +541,7 @@ class ContextManager:
             path = self._build_dump_path(self.auto_dump_dir, reason)
         self.last_dump_reason = reason
         self.last_dump_params = params
+        self.last_dump_filepath = path
         # print(f"Dumping context manager state to {path}\n Reason: {reason}\n Params: {params}\n")
         context = self._to_serializable(self._get_dump_state())
         with open(path, "w", encoding="utf-8") as f:
@@ -547,6 +582,10 @@ class ContextManager:
             self.auto_dump_run_dir = data.get("auto_dump_run_dir", self.auto_dump_run_dir)
         self.last_dump_reason = data.get("last_dump_reason", dump_meta.get("reason", self.last_dump_reason))
         self.last_dump_params = data.get("last_dump_params", dump_meta.get("params", self.last_dump_params))
+        self.last_dump_filepath = data.get("last_dump_filepath", self.last_dump_filepath)
+        self.latest_agent_id = data.get("latest_agent_id", self.latest_agent_id)
+        self.latest_agent_tool_usage = data.get("latest_agent_tool_usage", self.latest_agent_tool_usage)
+        self.latest_agent_factory_output = self._restore_factory_output(data.get("latest_agent_factory_output", self.latest_agent_factory_output))
         task_state_data = data.get("task_state")
         if task_state_data is not None:
             self.task_state = self._restore_planned_tasks(task_state_data)
@@ -564,6 +603,10 @@ class ContextManager:
             "auto_dump_run_dir": self.auto_dump_run_dir,
             "last_dump_reason": self.last_dump_reason,
             "last_dump_params": self.last_dump_params,
+            "last_dump_filepath": self.last_dump_filepath,
+            "latest_agent_id": self.latest_agent_id,
+            "latest_agent_tool_usage": self.latest_agent_tool_usage,
+            "latest_agent_factory_output": self.latest_agent_factory_output,
             "next_agent_id": self.next_agent_id,
             "task_state": self.task_state,
             "overall_goal": self.overall_goal,
@@ -628,7 +671,16 @@ class ContextManager:
         if hasattr(PlannedTasks, "parse_obj"):
             return PlannedTasks.parse_obj(data)
         return PlannedTasks(**data)
-
+    
+    def _restore_factory_output(self, data: Any) -> FactoryOutput:
+        if isinstance(data, FactoryOutput):
+            return data
+        if hasattr(FactoryOutput, "model_validate"):
+            return FactoryOutput.model_validate(data)
+        if hasattr(FactoryOutput, "parse_obj"):
+            return FactoryOutput.parse_obj(data)
+        return FactoryOutput(**data)
+    
     def _restore_available_resources(self, data: Dict[str, Any]) -> Dict[str, ResourceReference]:
         resources = {}
         for key, value in data.items():

@@ -69,6 +69,27 @@ def write_file(file_path, content):
         logger.error(error_msg)
         return error_msg
 
+def load_full_skill_doc(file_path):
+    """
+    Reads the content of a skills.md file.
+    
+    Args:
+        file_path (str): The path to the skills.md file.
+        
+    Returns:
+        str: The content of the file.
+    """
+    logger.info(f"Loading skill doc: {file_path}")
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            logger.info(f"Successfully read skill.md {len(content)} characters from {file_path}")
+            return content
+    except Exception as e:
+        error_msg = f"Error reading skill {file_path}: {e}"
+        logger.error(error_msg)
+        return error_msg
+
 # if __name__ == "__main__":
 #     # Test cases
 #     test_file = "test_output/test.txt"

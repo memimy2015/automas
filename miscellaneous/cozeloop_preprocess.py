@@ -25,6 +25,7 @@ def step_process_output(input: dict) -> dict:
             "formatted_task_plan": input["formatted_task_plan"],
             "resp_content": input["resp_content"],
             "resp_status": input["resp_status"],
+            "tool_usage": input["tool_usage"],
         }
 
 def step_process_input(input: dict) -> dict:
@@ -84,7 +85,7 @@ def llm_call_json_schema_process_output(output: tuple) -> dict:
     """
     return {
             "finish_reason": output[0],
-            "response": output[1].parsed.model_dump_json(indent=2),
+            "response": output[1].parsed.model_dump_json(indent=2) if output[0] != "tool_calls" else output[1].tool_calls[0].function.model_dump_json(indent=2),
             "usage": output[2].model_dump_json(indent=2),
         }
 
@@ -132,7 +133,8 @@ def agent_process_output(input: tuple) -> dict:
             "result": input[0],
             "usage": input[1].model_dump_json(indent=2),
             "status": input[2],
-        }
+            "tool_usage": input[3],
+        }   
     
 def summarizer_process_output(input: tuple) -> dict:
     """

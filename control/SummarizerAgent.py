@@ -10,7 +10,7 @@ from llm.json_schemas import ProactiveQuery, ClaimerSchema
 from execution.agent.prompt import render
 from .notifier import Notifier
 from datetime import datetime
-from cozeloop.decorator import observe
+from miscellaneous.observe import observe
 
 def access_knowledgeDB():
     return "None"
@@ -80,8 +80,8 @@ class SummarizerAgent:
         """
         if channel is None:
             channel = self.identity + "_main"
-        self.messages.append(message)
-        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}])
+        self.messages.append(message) # 不能删，Summarizer只执行一次，所以没有prepare_context函数为每次执行提供上下文吗，这里选择直接加入messages
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}]) # 只用作记录
     
     def extend_messages(self, messages: list):
         self.messages.extend(messages)
@@ -93,7 +93,7 @@ class SummarizerAgent:
     )
     def run(self):
         self.extend_messages(
-            self.context_manager.get_dialogue(filter=["*_summary", "user", "Claimer*"], formatted=False)
+            self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", "Claimer*"], formatted=False) 
         )
         task_status = self.context_manager.get_task_status()[0]
         # formatted Plan / task_status

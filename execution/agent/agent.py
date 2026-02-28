@@ -12,7 +12,7 @@ from typing import Dict, Any
 from llm.json_schemas import SubmitMessage
 from uuid import uuid4
 import os
-from cozeloop.decorator import observe
+from miscellaneous.observe import observe
 
 DEFAULT_SUBMIT_PROMPT = """
 # Role 
@@ -79,6 +79,7 @@ class Agent:
         self.context_manager.add_active_subagent(subagent_id=self.agent_id, default_channel=self.identity + "_main")
         # 设置子任务的agent_id
         self.context_manager.set_current_subtask_agent_id(self.agent_id)
+        self.context_manager.set_latest_agent(self.agent_id)
         # 不存在的Agent可以记录一下系统提示词
         if not is_existing_agent:
             self.append_message({"role": "system", "content": prompt}, {}, channel=self.identity + "_main")
@@ -141,12 +142,12 @@ class Agent:
                     self.append_message({"role": "user", "content": f"现在处理的子目标概况：\n {formatted_subtask_step} \n 执行概要为：{content}"}, usage.model_dump(), channel=self.identity + "_summary")
                     
                     self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources)
-                    return content, usage, "success"
+                    return content, usage, "success", self.tool_usage
                 except Exception as e:
                     print(f"submit {self.messages[-1]} \n error: {e}")
                     error_summary = f"Error when submitting task execution results, error message: {e}"
                     self.context_manager.submit_sub_objective(error_summary, "pending", {})
-                    return content, usage, str(e)
+                    return content, usage, str(e), self.tool_usage
             self.append_message(resp_msg.model_dump(), usage.model_dump(), channel=self.identity + "_main")
             tool_call = resp_msg.tool_calls[0]
             tool_name = tool_call.function.name
@@ -155,6 +156,7 @@ class Agent:
                 tool_args["invoker_agent_id"] = self.agent_id
                 tool_args["in_channel"] = self.identity + "_main"
                 tool_args["out_channel"] = "user"
+            self.context_manager.record_tool_usage(self.agent_id, tool_name)
             tool_result = self.tool_executer.call(tool_name, tool_args)
             self.append_message(
                 {"role": "tool", "content": tool_result, "tool_call_id": tool_call.id, "tool_name": tool_name}, usage.model_dump(), channel=self.identity + "_main"
@@ -162,4 +164,6 @@ class Agent:
     
     def _prepare_context(self):
         self.context_manager.handle_pending_tool_call(self.tool_executer, self.agent_id, self.identity + "_main")
-        self.messages = self.context_manager.get_dialogue(filter=[self.identity + "_main"], formatted=False)
+        self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=[self.identity + "_main"], formatted=False)
+        if self.agent_id == self.context_manager.latest_agent_id:
+            self.tool_usage = self.context_manager.latest_agent_tool_usage

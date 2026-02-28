@@ -8,8 +8,14 @@ from volcenginesdkarkruntime import Ark
 import os
 from pydantic import BaseModel
 from .json_schemas import ClaimerSchema, PlannedTasks
-from cozeloop.decorator import observe
+from miscellaneous.observe import observe
 from cozeloop import flush, get_span_from_context
+from control.context_manager import ContextManager
+from config.logger import setup_logger
+
+logger = setup_logger("LLM")
+
+context_manager = ContextManager()
 api_key = os.environ.get("ARK_API_KEY")
 model = os.environ.get("MODEL")
 
@@ -28,7 +34,7 @@ registered_schema["Submit"] = SubmitMessage
 
 @observe(
     name="llm_call",
-    span_type="llm_call_span",
+    span_type="model",
     tags={"mode": 'simple', "node_id": 6076665},
     process_outputs=llm_call_process_output,
     process_inputs=llm_call_process_input,
@@ -53,15 +59,28 @@ def llm_call(*, messages: list, tools: list):
         tools=tools,
         max_tokens=12 * 1024,
     )
-    formatted_usage = format_token_usage(resp.usage)  
-    get_span_from_context().set_tags({"input_tokens": formatted_usage["prompt_tokens"], "output_tokens": formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"]})
-    flush()
-    return resp.choices[0].finish_reason, resp.choices[0].message, resp.usage
+    formatted_usage = format_token_usage(resp.usage)
+    if os.environ.get("AUTOMAS_ENABLE_OBSERVE") == "1":
+        get_span_from_context().set_tags({
+            "input_tokens": formatted_usage["prompt_tokens"], 
+            "output_tokens": formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"],
+            "last_dump_filepath": context_manager.last_dump_filepath
+            }
+        )
+        flush()
+    finish_reason = resp.choices[0].finish_reason
+    if finish_reason == "content_filter":
+        logger.warning("WARNING: 生成内容被审核拦截")
+        print("WARNING: 生成内容被审核拦截")
+    if finish_reason == "length":
+        logger.warning("WARNING: 模型生成内容被截断")
+        print("WARNING: 模型生成内容被截断")
+    return finish_reason, resp.choices[0].message, resp.usage
 
 # Json schema输出不可用stream参数
 @observe(
     name="llm_call_json_schema",
-    span_type="llm_call_json_schema_span",
+    span_type="model",
      tags={"mode": 'simple', "node_id": 6076665},
     process_outputs=llm_call_json_schema_process_output,
     process_inputs=llm_call_json_schema_process_input,
@@ -85,7 +104,20 @@ def llm_call_json_schema(*, messages: list, tools: list, jsonSchema: str):
         max_tokens=20 * 1024,
     )
     formatted_usage = format_token_usage(resp.usage)  
-    get_span_from_context().set_tags({"input_tokens": formatted_usage["prompt_tokens"], "output_tokens": formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"]})
-    flush()
-    return resp.choices[0].finish_reason, resp.choices[0].message, resp.usage
+    if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+        get_span_from_context().set_tags({
+            "input_tokens": formatted_usage["prompt_tokens"], 
+            "output_tokens": formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"],
+            "last_dump_filepath": context_manager.last_dump_filepath
+            }
+        )
+        flush()
+    finish_reason = resp.choices[0].finish_reason
+    if finish_reason == "content_filter":
+        logger.warning("WARNING: 生成内容被审核拦截")
+        print("WARNING: 生成内容被审核拦截")
+    if finish_reason == "length":
+        logger.warning("WARNING: 模型生成内容被截断")
+        print("WARNING: 模型生成内容被截断")
+    return finish_reason, resp.choices[0].message, resp.usage
 

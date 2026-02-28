@@ -167,19 +167,30 @@ When using a skill, you should first refer to the skill's user instructions.
 For a task, if there are matching skills, priority should be given to executing in accordance with the skills' user manual. Only after failure should other methods be attempted.
 Prioritize skills over tools
 
-# final output directory
-- final output directory path: {}
-- Determine whether the results of processing or analysis need to be generated in the form of files based on user requirements. All deliverables shall be placed in the final output directory of the current project. If this directory does not exist, create it.
-- You must create a folder in the final output directory to store the deliverables, named what you think is appropriate.
-- You must not create or delete any file other than final output folder and tmp folder.
+# Execution Environment Constraints
 
-# tmp directory
-- tmp directory path: {}
-- All temporary files generated during the process are stored in the tmp directory, do not delete temporary files.
+The planner operates under strict file system isolation rules.
 
-# project directory
-- project directory path(PROJECT_DIR): {}
-- You **must not** create any file or folder in the project directory, put them to final output or tmp directory.
+## Final Output Directory
+- Path: {}
+- All user-required deliverables must be placed inside this directory.
+- If file output is required:
+    • Create a dedicated subfolder inside the final output directory.
+    • Name the folder meaningfully based on task purpose.
+- If the final output directory does not exist, create it.
+- No files may be created or deleted outside:
+    • Final output directory
+    • tmp directory
+
+## Temporary Directory
+- Path: {}
+- All intermediate or temporary files must be stored here.
+- Temporary files must NOT be deleted.
+
+## Project Directory
+- Path: {}
+- Do NOT create, modify, or delete any file or folder inside the project directory other than tmp directory and output directory.
+- All generated artifacts must remain isolated in the allowed directories.
 
 # note
 When reading and writing files, attention should be paid to the issue of **Chinese character encoding**. Do not display garbled Chinese characters.

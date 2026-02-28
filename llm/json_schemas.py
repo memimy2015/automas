@@ -35,8 +35,8 @@ class Subtask(BaseModel):
     resource_reference: list[ResourceReference] = Field(description="子任务的资源引用", default_factory=list)
 
 class NextStep(BaseModel):
-    objective_index: int = Field(default=0, description="子任务的索引")
-    sub_objective_index: int = Field(default=0, description="子任务的子步骤的索引")
+    objective_index: int = Field(default=0, description="子任务的索引，从0开始")
+    sub_objective_index: int = Field(default=0, description="子任务的子步骤的索引，从0开始")
 
 class PlannedTasks(BaseModel):
     tasks: list[Subtask]= Field(description="子任务列表", default_factory=list)

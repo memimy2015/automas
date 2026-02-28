@@ -1,7 +1,7 @@
 from llm.llm import llm_call_json_schema
 from resources.tools.console_input import get_input
-from execution.agent.agent import Agent
-
+from cozeloop import flush, get_span_from_context
+from miscellaneous.observe import observe
 messages = [{"role": "user", "content": "你好"},{"role": "assistant", "content": "你好！有什么我可以帮助你的吗？"},{"role": "user", "content": "我想知道你是男是女"}]
 tools = [
     {
@@ -24,8 +24,10 @@ tools = [
     }
 ]
 jsonSchema = "Planner"
-finish_reason, parsed, usage = llm_call_json_schema(messages=messages, tools=tools, jsonSchema=jsonSchema)
+finish_reason, resp, usage = llm_call_json_schema(messages=messages, tools=[], jsonSchema=jsonSchema)
 print(f"finish_reason: {finish_reason}")
-print(f"parsed: {parsed}")
-print(f"parsed.content: {parsed.tool_calls[0].function.name}")
-print(f"parsed.content: {parsed.tool_calls[0].function.parsed_arguments}")
+print(f"resp: {resp}")
+print(f"resp parsed: {resp.parsed} \n {type(resp.parsed)}")
+print(f"resp.content: {resp.tool_calls[0].function.name}")
+print(f"resp.tool_usage: {resp.tool_calls[0].function.parsed_arguments}")
+print(f"usage: {usage.model_dump()}")
