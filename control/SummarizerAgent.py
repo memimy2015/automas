@@ -80,11 +80,11 @@ class SummarizerAgent:
         """
         if channel is None:
             channel = self.identity + "_main"
-        self.messages.append(message) # 不能删，Summarizer只执行一次，所以没有prepare_context函数为每次执行提供上下文吗，这里选择直接加入messages
+        # self.messages.append(message) # 不能删，Summarizer只执行一次，所以没有prepare_context函数为每次执行提供上下文吗，这里选择直接加入messages
         self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}]) # 只用作记录
     
-    def extend_messages(self, messages: list):
-        self.messages.extend(messages)
+    # def extend_messages(self, messages: list):
+    #     self.messages.extend(messages)
     
     @observe(
         name="summarizer",
@@ -92,19 +92,20 @@ class SummarizerAgent:
         process_outputs=summarizer_process_output,
     )
     def run(self):
-        self.extend_messages(
-            self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", "Claimer*"], formatted=False) 
-        )
+        # self.extend_messages(
+        #     self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", "Claimer*"], formatted=False) 
+        # )
         task_status = self.context_manager.get_task_status()[0]
         # formatted Plan / task_status
         formatted_status = self.context_manager.get_formatted_plan(task_status)
-        self.extend_messages(
+        self.append_message(
             [
                 {
                     "role": "user", 
                     "content": f"当前任务已结束，描述信息为：\n {formatted_status}"
                 }   
-            ]
+            ],
+            self.identity + "_main"
         )
         self.append_message(
             {
@@ -113,6 +114,7 @@ class SummarizerAgent:
             },
             self.identity + "_main"
         )
+        self._prepare_context()
         finish_reason, resp, usage = llm_call(messages=self.messages, tools=[])
         self.append_message(
             {
@@ -122,5 +124,8 @@ class SummarizerAgent:
             self.identity + "_main"
         )
         return resp.content, usage
+    
+    def _prepare_context(self):
+        self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", "Claimer*", self.identity + "_main"], formatted=False)
         
         

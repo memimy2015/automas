@@ -179,3 +179,5 @@ dump/
 
 # cleanup
 # whole_cleanup.sh
+test.py
+test*.py
