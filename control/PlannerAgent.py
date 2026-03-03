@@ -17,8 +17,6 @@ from miscellaneous.observe import observe
 
 CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 AUTOMAS_DIR = os.path.dirname(CURRENT_FILE_DIR)  # Go up two levels: execution/agent -> execution -> automas
-DEFAULT_TMP_DIR = os.path.join(AUTOMAS_DIR, "tmp")
-DEFAULT_OUTPUT_DIR = os.path.join(AUTOMAS_DIR, "output")
 
 CN_PROMPT = """
 你是一个任务规划专家，现在需要根据用户提出的具体问题，按照“问题拆解→子问题验证→流程优化”的逻辑，将问题分解为更细致、无遗漏的子问题（需覆盖问题的核心要素、关联条件及潜在边界），并为每个子问题设计顺畅且正确的解决流程：首先明确子问题的目标与输入输出要求，其次规划分步骤的执行逻辑（含关键判断节点与应对方案），最后说明子问题间的衔接关系，确保整体流程可落地、无逻辑断层。
@@ -237,6 +235,7 @@ The system must always remain in a valid state:
     
 # Specific requirements
 
+- Milestones must be in the form of strings, and each element must be a description of the milestone, you just need to read this section to catch up with current accomplishments and do not modify it.
 - SubtaskSteps object is the only executable unit and must not be empty.
 - Each sub-objective must be:
     • Atomic at agent level (not tool level)
@@ -467,6 +466,11 @@ class PlannerAgent:
         Args:
             None
         """
+        if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+            QA = self.context_manager.get_active_qa("planner")
+        else:
+            QA = []
+        self.context_manager.set_active_qa("planner", QA)
         print("=====PlannerAgent Started=====")
         self.context_manager.set_is_planned(False)
         tools = []
@@ -476,19 +480,16 @@ class PlannerAgent:
             tools.append(tool)
         # need_replan = False
         # Planning
-        while True:
-            # Get updated task status
-            self._prepare_context()
-            finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=tools, jsonSchema="Planner")
-            print(finish_reason)
-            if finish_reason != "tool_calls":
-                resp = resp.parsed
-                print(resp.model_dump_json(indent=2))
-                self.context_manager.apply_planned_tasks(resp)
-                break
-            else:
-                # print("=====REPLAN REQUIRED=====")
-                # need_replan = True
+        try:
+            while True:
+                self._prepare_context()
+                finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=tools, jsonSchema="Planner")
+                print(finish_reason)
+                if finish_reason != "tool_calls":
+                    resp = resp.parsed
+                    print(resp.model_dump_json(indent=2))
+                    self.context_manager.apply_planned_tasks(resp)
+                    break
                 tool_name = resp.tool_calls[0].function.name
                 tool_args = json.loads(resp.tool_calls[0].function.arguments)
                 if tool_name != "call_user":
@@ -497,18 +498,26 @@ class PlannerAgent:
                     tool_args["invoker_agent_id"] = self.agent_id
                     tool_args["in_channel"] = self.identity + "_main"
                     tool_args["out_channel"] = "user"
-                tool_result = self.tool_executer.call(tool_name, tool_args) # call_user无需再planner记录，只需要让user的信道存在这个问答信息就可以，_prepare_context会加载的
+                tool_result = self.tool_executer.call(tool_name, tool_args)
                 tool_call_id = resp.tool_calls[0].id
                 if tool_name != "call_user":
                     self.append_message({"role": "tool", "content": tool_result, "tool_call_id": tool_call_id, "tool_name": tool_name}, channel=self.identity + "_main")
-                
-        print("=====PlannerAgent Finished=====")
-        self.context_manager.set_is_planned(True)
-        return {
-            "is_mission_accomplished": resp.is_mission_accomplished,
-            "formatted_plan": self.context_manager.get_formatted_plan(resp),
-            "total_usage": usage,
-        }
+                if tool_name == "call_user":
+                    QA.append({"planner": tool_args["query"], "user": tool_result})
+                    self.context_manager.set_active_qa("planner", QA)
+
+            print("=====PlannerAgent Finished=====")
+            self.context_manager.set_is_planned(True)
+            qa_snapshot = list(QA)
+            return {
+                "is_mission_accomplished": resp.is_mission_accomplished,
+                "formatted_plan": self.context_manager.get_formatted_plan(resp),
+                "total_usage": usage,
+                "QA": qa_snapshot
+            }
+        finally:
+            self.context_manager.clear_active_qa("planner")
+            QA.clear()
         
     
     def _prepare_context(self, need_replan: bool = False):
@@ -523,8 +532,8 @@ class PlannerAgent:
             # ChatHistory=self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", self.identity + "_main"], formatted=True), 
             OverallGoal=self.context_manager.get_overall_goal(), 
             TaskList=self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]),
-            TMP_DIR=DEFAULT_TMP_DIR,
-            OUTPUT_DIR=DEFAULT_OUTPUT_DIR,
+            TMP_DIR=self.context_manager.get_tmp_dir(),
+            OUTPUT_DIR=self.context_manager.get_output_dir(),
         )
         # Planner的system prompt根据context_manager的信息实时构造，不允许加入channel！
         self.messages[0] = {"role": "system", "content": updated_prompt}

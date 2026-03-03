@@ -48,7 +48,6 @@ def agent_factory_process_output(input: dict) -> dict:
     Preprocess the input for the agent factory.
     """
     return {
-            "agent": input["agent"],
             "role": input["instruction"]["role_setting"],
             "task_specification": input["instruction"]["task_specification"],
         }
@@ -59,8 +58,8 @@ def llm_call_process_output(output: tuple) -> dict:
     """
     return {
             "finish_reason": output[0],
-            "response": output[1].model_dump_json(indent=2),
-            "usage": output[2].model_dump_json(indent=2),
+            "response": output[1].model_dump(),
+            "usage": output[2].model_dump(),
         }
     
 def llm_call_process_input(input: dict) -> dict:
@@ -85,8 +84,8 @@ def llm_call_json_schema_process_output(output: tuple) -> dict:
     """
     return {
             "finish_reason": output[0],
-            "response": output[1].parsed.model_dump_json(indent=2) if output[0] != "tool_calls" else output[1].tool_calls[0].function.model_dump_json(indent=2),
-            "usage": output[2].model_dump_json(indent=2),
+            "response": output[1].parsed.model_dump() if output[0] != "tool_calls" else output[1].tool_calls[0].function.model_dump(),
+            "usage": output[2].model_dump(),
         }
 
 def llm_call_json_schema_process_input(input: dict) -> dict:
@@ -112,7 +111,9 @@ def planner_process_output(input: dict) -> dict:
     return {
             "is_mission_accomplished": input["is_mission_accomplished"],
             "formatted_plan": input["formatted_plan"],
-            "total_usage": input["total_usage"].model_dump_json(indent=2),
+            # "total_usage": input["total_usage"].model_dump(),
+            "total_usage": input["total_usage"].model_dump(),
+            "QA": input["QA"]
         }
 
 def claimer_process_output(input: dict) -> dict:
@@ -121,8 +122,11 @@ def claimer_process_output(input: dict) -> dict:
     """
     return {
             "Refined_objective": input["Refined_objective"],
-            "resource_reference": [resource.model_dump_json(indent=2) for resource in input["resource_reference"]],
-            "total_usage": input["total_usage"].model_dump_json(indent=2),
+            # "resource_reference": [resource.model_dump() for resource in input["resource_reference"]],
+            "resource_reference": [resource.model_dump() for resource in input["resource_reference"]],
+            # "total_usage": input["total_usage"].model_dump(),
+            "total_usage": input["total_usage"].model_dump(),
+            "QA": input["QA"]
         }
     
 def agent_process_output(input: tuple) -> dict:
@@ -131,9 +135,10 @@ def agent_process_output(input: tuple) -> dict:
     """
     return {
             "result": input[0],
-            "usage": input[1].model_dump_json(indent=2),
+            "usage": input[1].model_dump(),
             "status": input[2],
             "tool_usage": input[3],
+            "QA": input[4]
         }   
     
 def summarizer_process_output(input: tuple) -> dict:
@@ -142,7 +147,7 @@ def summarizer_process_output(input: tuple) -> dict:
     """
     return {
             "summary": input[0],
-            "usage": input[1].model_dump_json(indent=2),
+            "usage": input[1].model_dump(),
         }
     
 def format_token_usage(usage: dict) -> dict:

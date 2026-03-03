@@ -99,12 +99,11 @@ class SummarizerAgent:
         # formatted Plan / task_status
         formatted_status = self.context_manager.get_formatted_plan(task_status)
         self.append_message(
-            [
-                {
-                    "role": "user", 
-                    "content": f"当前任务已结束，描述信息为：\n {formatted_status}"
-                }   
-            ],
+            {
+                "role": "user", 
+                "content": f"当前任务已结束，描述信息为：\n {formatted_status}"
+            }   
+            ,
             self.identity + "_main"
         )
         self.append_message(

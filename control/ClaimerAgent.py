@@ -11,6 +11,7 @@ from llm.json_schemas import ProactiveQuery, ClaimerSchema
 from execution.agent.prompt import render
 from .notifier import Notifier
 from miscellaneous.observe import observe
+import os
 
 def access_knowledgeDB():
     return "None"
@@ -78,44 +79,54 @@ class ClaimerAgent:
         process_outputs=claimer_process_output,
     )
     def run(self, query: str):
+        if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+            QA = self.context_manager.get_active_qa("claimer")
+        else:
+            QA = []
+        self.context_manager.set_active_qa("claimer", QA)
         print("=====ClaimerAgent Started=====")
-        if self.context_manager.get_available_resources():
-            formatted_available_resources = self.context_manager.get_formatted_available_resources()
-            self.append_message({"role": "user", "content": f"当前可用资源：\n {formatted_available_resources}"}, channel=[self.identity + "_main", "user"]) # 这里可能后续需要改，会把所有资源加入消息历史，可能会很长，至少不应该发到user信道被planner接受
-        self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"])
-        self._prepare_context()
-        finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
-        resp = resp.parsed
-        print(f'Finish Reason: {finish_reason}')
-        # process json output
-        while resp.need_more_info:
-            i = 0
-            for model_query in resp.contents:
-                i += 1
-                model_query = model_query.query
-                print(f'Model query: {model_query} | ({i} / {len(resp.contents)})')
-                user_resp = self.notifier.call_user(model_query, invoker_agent_id=self.agent_id, in_channel=self.identity + "_main", out_channel="user")
-                # 这里不用append_message，因为call_user已经append了
-                self.append_message({"role": "assistant", "content": model_query}, channel=self.identity + "_main")
-                self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main")
-                
+        try:
+            if self.context_manager.get_available_resources():
+                formatted_available_resources = self.context_manager.get_formatted_available_resources()
+                self.append_message({"role": "user", "content": f"当前可用资源：\n {formatted_available_resources}"}, channel=[self.identity + "_main", "user"]) # 这里可能后续需要改，会把所有资源加入消息历史，可能会很长，至少不应该发到user信道被planner接受
+            self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"])
             self._prepare_context()
             finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
             resp = resp.parsed
-        print(f"Source reference: \n {resp.resource_reference}")
-        print(f"Refined objective: \n {resp.refined_objective}")
-        self.append_message({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"}, channel=[self.identity + "_main", "user"])
-        self.context_manager.update_overall_goal(resp.refined_objective)
-        for resource_ref in resp.resource_reference:
-            self.append_message({"role": "user", "content": f"可用资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"}, channel=[self.identity + "_main", "user"])
-            self.context_manager.add_available_resources({resource_ref.description: resource_ref})
-        print("=====ClaimerAgent Finished=====")
-        self.context_manager.is_clarified = True
-        return {
-            "Refined_objective": resp.refined_objective,
-            "resource_reference": resp.resource_reference,
-            "total_usage": usage,
-        }
+            print(f'Finish Reason: {finish_reason}')
+            while resp.need_more_info:
+                i = 0
+                for model_query in resp.contents:
+                    i += 1
+                    model_query = model_query.query
+                    print(f'Model query: {model_query} | ({i} / {len(resp.contents)})')
+                    user_resp = self.notifier.call_user(model_query, invoker_agent_id=self.agent_id, in_channel=self.identity + "_main", out_channel="user")
+                    self.append_message({"role": "assistant", "content": model_query}, channel=self.identity + "_main")
+                    self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main")
+                    QA.append({"claimer": model_query, "user": user_resp})
+                    self.context_manager.set_active_qa("claimer", QA)
+                self._prepare_context()
+                finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
+                resp = resp.parsed
+            print(f"Source reference: \n {resp.resource_reference}")
+            print(f"Refined objective: \n {resp.refined_objective}")
+            self.append_message({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"}, channel=[self.identity + "_main", "user"])
+            self.context_manager.update_overall_goal(resp.refined_objective)
+            for resource_ref in resp.resource_reference:
+                self.append_message({"role": "user", "content": f"可用资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"}, channel=[self.identity + "_main", "user"])
+                self.context_manager.add_available_resources({resource_ref.description: resource_ref})
+            print("=====ClaimerAgent Finished=====")
+            self.context_manager.is_clarified = True
+            qa_snapshot = list(QA)
+            return {
+                "Refined_objective": resp.refined_objective,
+                "resource_reference": resp.resource_reference,
+                "total_usage": usage,
+                "QA": qa_snapshot
+            }
+        finally:
+            self.context_manager.clear_active_qa("claimer")
+            QA.clear()
         
     def _prepare_context(self):
         self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=[self.identity + "_main"], formatted=False)

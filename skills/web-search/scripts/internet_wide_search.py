@@ -1,7 +1,7 @@
+import os
 import requests
 import json
 import sys
-import os
 
 URL = "https://open.feedcoopapi.com/search_api/web_search"
 
@@ -31,7 +31,6 @@ def search(query):
         
         # Raise an exception for bad status codes
         response.raise_for_status()
-        
         # Try to parse JSON response
         try:
             res_json = response.json()

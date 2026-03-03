@@ -175,9 +175,18 @@ agent_log/
 dump/
 
 # essay
-# essay/
+essay/*.pdf
+essay/*.PDF
 
 # cleanup
 # whole_cleanup.sh
 test.py
 test*.py
+
+# local debug
+.dbg/
+debug.md
+
+# large local resources/results
+testcase_resources/
+testcase_results/

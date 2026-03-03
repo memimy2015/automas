@@ -23,7 +23,7 @@ class SubtaskResults(BaseModel):
 class SubtaskSteps(BaseModel):
     sub_objective: str = Field(description="子任务的子步骤描述", default="")
     status: Literal["pending", "completed", "failed", "cancelled"] = Field(description="子任务的子步骤的状态", default="pending")
-    milestones: list[str] = Field(description="子任务的子步骤的里程碑信息", default_factory=list)
+    milestones: list[str] = Field(description="子任务的子步骤的里程碑信息，对于同一个子步骤，保持和原本的一致。如果之前没有这个子步骤则设置为空列表", default_factory=list)
     resource_reference: list[ResourceReference] = Field(description="子任务的子步骤的资源引用", default_factory=list)
     execution_summary: str = Field(description="子任务的子步骤的执行摘要", default="")
     agent_id: Optional[int] = Field(description="执行子任务的智能体的ID，如果子任务还没开始就不需要设置，已经完成的子任务会包含这个字段，你只需要保持原样。", default=None)

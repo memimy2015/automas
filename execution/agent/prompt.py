@@ -91,8 +91,6 @@ def build_system_context():
 # Calculate the project root directory (automas) based on the current file's path
 CURRENT_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 AUTOMAS_DIR = os.path.dirname(os.path.dirname(CURRENT_FILE_DIR))  # Go up two levels: execution/agent -> execution -> automas
-DEFAULT_TMP_DIR = os.path.join(AUTOMAS_DIR, "tmp")
-DEFAULT_OUTPUT_DIR = os.path.join(AUTOMAS_DIR, "output")
 PROJECT_DIR = AUTOMAS_DIR
 
 SYS_PROMPT_TEMPLATE = """
@@ -204,5 +202,23 @@ The current os platform is {}.
 """
 
 
-def render(role_setting: str, task_background: str, sub_objective: str,  task_specification: str, skills: str, prompt_template: str = SYS_PROMPT_TEMPLATE, tmp_dir: str = DEFAULT_TMP_DIR, output_dir: str = DEFAULT_OUTPUT_DIR, project_dir: str = PROJECT_DIR):
+def _task_dir() -> str:
+    return os.getenv("AUTOMAS_TASK_DIR", "default") or "default"
+
+
+def _default_tmp_dir(project_dir: str) -> str:
+    return os.path.join(project_dir, "tmp", _task_dir())
+
+
+def _default_output_dir(project_dir: str) -> str:
+    return os.path.join(project_dir, "output", _task_dir())
+
+
+def render(role_setting: str, task_background: str, sub_objective: str,  task_specification: str, skills: str, prompt_template: str = SYS_PROMPT_TEMPLATE, tmp_dir: str | None = None, output_dir: str | None = None, project_dir: str = PROJECT_DIR):
+    if tmp_dir is None:
+        tmp_dir = _default_tmp_dir(project_dir)
+    if output_dir is None:
+        output_dir = _default_output_dir(project_dir)
+    os.makedirs(tmp_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
     return prompt_template.format(role_setting, task_background, sub_objective, task_specification, skills, output_dir, tmp_dir, project_dir, datetime.now().strftime("%Y年%m月%d日"), build_system_context())

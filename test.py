@@ -2,6 +2,9 @@ from llm.llm import llm_call_json_schema
 from resources.tools.console_input import get_input
 from cozeloop import flush, get_span_from_context
 from miscellaneous.observe import observe
+import argparse
+
+
 messages = [{"role": "user", "content": "你好"},{"role": "assistant", "content": "你好！有什么我可以帮助你的吗？"},{"role": "user", "content": "我想知道你是男是女"}]
 tools = [
     {
@@ -23,6 +26,14 @@ tools = [
         }
     }
 ]
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--test_case", type=str, default="114514", required=False)
+
+args = parser.parse_args()
+test_case = args.test_case
+print(f"test_case: \n{test_case}\n")
+
 jsonSchema = "Planner"
 finish_reason, resp, usage = llm_call_json_schema(messages=messages, tools=[], jsonSchema=jsonSchema)
 print(f"finish_reason: {finish_reason}")

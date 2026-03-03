@@ -113,54 +113,67 @@ class Agent:
     )
     def run(self, query: str):
         self.context_manager.is_executing = True
+        if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+            QA = self.context_manager.get_active_qa("agent")
+        else:
+            QA = []
+        self.context_manager.set_active_qa("agent", QA)
         if query !=  "":
             self.append_message({"role": "user", "content": query}, {}, channel=self.identity + "_main")
         tools = []
         for tool_name in self.tool_name_list:
             tools.append(self.tool_executer.get_tool(tool_name))    
-        while True:
-            self._prepare_context()
-            finish_reason, resp_msg, usage = llm_call(messages=self.messages, tools=tools)
-            if finish_reason != "tool_calls":
-                content = resp_msg.content
-                self.append_message({"role": "assistant", "content": content}, usage.model_dump(), channel=self.identity + "_main")
-                self.append_message({"role": "user", "content": DEFAULT_SUBMIT_PROMPT}, usage.model_dump(), channel=self.identity + "_main")
-                try:
-                    self._prepare_context()
-                    finish_reason, resp_msg, submit_usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Submit")
-                    resp_msg = resp_msg.parsed
-                    resources = {}
-                    for resource in resp_msg.resource_reference:
-                        resources[resource.description] = resource
-                    print(f"submit {resp_msg.task_name}: \n {resp_msg.task_summary} \n status: {resp_msg.task_status}")
-                    print(f"resources: {resources}")
-                    
-                    # 把执行反馈给自己的summary channel
-                    current_subtask_index, current_subtask_step_index = self.context_manager._get_current_indices()
-                    current_subtask_step = self.context_manager.get_subtask_step(current_subtask_index, current_subtask_step_index)
-                    formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)   
-                    self.append_message({"role": "user", "content": f"现在处理的子目标概况：\n {formatted_subtask_step} \n 执行概要为：{content}"}, usage.model_dump(), channel=self.identity + "_summary")
-                    
-                    self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources)
-                    return content, usage, "success", self.tool_usage
-                except Exception as e:
-                    print(f"submit {self.messages[-1]} \n error: {e}")
-                    error_summary = f"Error when submitting task execution results, error message: {e}"
-                    self.context_manager.submit_sub_objective(error_summary, "pending", {})
-                    return content, usage, str(e), self.tool_usage
-            self.append_message(resp_msg.model_dump(), usage.model_dump(), channel=self.identity + "_main")
-            tool_call = resp_msg.tool_calls[0]
-            tool_name = tool_call.function.name
-            tool_args = json.loads(tool_call.function.arguments)
-            if tool_name == "call_user":
-                tool_args["invoker_agent_id"] = self.agent_id
-                tool_args["in_channel"] = self.identity + "_main"
-                tool_args["out_channel"] = "user"
-            self.context_manager.record_tool_usage(self.agent_id, tool_name)
-            tool_result = self.tool_executer.call(tool_name, tool_args)
-            self.append_message(
-                {"role": "tool", "content": tool_result, "tool_call_id": tool_call.id, "tool_name": tool_name}, usage.model_dump(), channel=self.identity + "_main"
-            )
+        try:
+            while True:
+                self._prepare_context()
+                finish_reason, resp_msg, usage = llm_call(messages=self.messages, tools=tools)
+                if finish_reason != "tool_calls":
+                    content = resp_msg.content
+                    self.append_message({"role": "assistant", "content": content}, usage.model_dump(), channel=self.identity + "_main")
+                    self.append_message({"role": "user", "content": DEFAULT_SUBMIT_PROMPT}, usage.model_dump(), channel=self.identity + "_main")
+                    try:
+                        self._prepare_context()
+                        finish_reason, resp_msg, submit_usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Submit")
+                        resp_msg = resp_msg.parsed
+                        resources = {}
+                        for resource in resp_msg.resource_reference:
+                            resources[resource.description] = resource
+                        print(f"submit {resp_msg.task_name}: \n {resp_msg.task_summary} \n status: {resp_msg.task_status}")
+                        print(f"resources: {resources}")
+                        
+                        current_subtask_index, current_subtask_step_index = self.context_manager._get_current_indices()
+                        current_subtask_step = self.context_manager.get_subtask_step(current_subtask_index, current_subtask_step_index)
+                        formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)   
+                        self.append_message({"role": "user", "content": f"现在处理的子目标概况：\n {formatted_subtask_step} \n 执行概要为：{content}"}, usage.model_dump(), channel=self.identity + "_summary")
+                        
+                        self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources)
+                        qa_snapshot = list(QA)
+                        return content, usage, "success", self.tool_usage, qa_snapshot
+                    except Exception as e:
+                        print(f"submit {self.messages[-1]} \n error: {e}")
+                        error_summary = f"Error when submitting task execution results, error message: {e}"
+                        self.context_manager.submit_sub_objective(error_summary, "pending", {})
+                        qa_snapshot = list(QA)
+                        return content, usage, str(e), self.tool_usage, qa_snapshot
+                self.append_message(resp_msg.model_dump(), usage.model_dump(), channel=self.identity + "_main")
+                tool_call = resp_msg.tool_calls[0]
+                tool_name = tool_call.function.name
+                tool_args = json.loads(tool_call.function.arguments)
+                if tool_name == "call_user":
+                    tool_args["invoker_agent_id"] = self.agent_id
+                    tool_args["in_channel"] = self.identity + "_main"
+                    tool_args["out_channel"] = "user"
+                self.context_manager.record_tool_usage(self.agent_id, tool_name)
+                tool_result = self.tool_executer.call(tool_name, tool_args)
+                self.append_message(
+                    {"role": "tool", "content": tool_result, "tool_call_id": tool_call.id, "tool_name": tool_name}, usage.model_dump(), channel=self.identity + "_main"
+                )
+                if tool_name == "call_user":
+                    QA.append({"agent": tool_args["query"], "user": tool_result})
+                    self.context_manager.set_active_qa("agent", QA)
+        finally:
+            self.context_manager.clear_active_qa("agent")
+            QA.clear()
     
     def _prepare_context(self):
         self.context_manager.handle_pending_tool_call(self.tool_executer, self.agent_id, self.identity + "_main")

@@ -58,6 +58,7 @@ class ContextManager:
         
         # 项目文件夹
         self.project_dir: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.task_dir: str = os.getenv("AUTOMAS_TASK_DIR", "default")
         
         # 活跃的subagent以及他所有的channel
         self.active_subagents: Dict[int, set[str]] = defaultdict(set)
@@ -76,6 +77,7 @@ class ContextManager:
         self.latest_agent_id: Optional[int] = None
         self.latest_agent_tool_usage: Optional[Dict[str, Any]] = None
         self.latest_agent_factory_output: Optional[FactoryOutput] = None
+        self.active_qa: Dict[str, List[Dict[str, Any]]] = {}
         self.loaded_from_dump: bool = False
         self.pending_tool_call_channels: set[str] = set()
         
@@ -107,12 +109,40 @@ class ContextManager:
         usage = self.latest_agent_tool_usage["tool_usage"]
         usage[tool_name] = usage.get(tool_name, 0) + 1
         self._auto_dump("record_tool_usage", {"agent_id": agent_id, "tool_name": tool_name, "count": usage[tool_name]})
+
+    def get_active_qa(self, kind: Literal["claimer", "planner", "agent"]) -> List[Dict[str, Any]]:
+        return list((self.active_qa or {}).get(kind, []) or [])
+
+    def set_active_qa(self, kind: Literal["claimer", "planner", "agent"], qa: List[Dict[str, Any]]):
+        qa_value = list(qa or [])
+        if not self.active_qa:
+            self.active_qa = {}
+        self.active_qa[kind] = qa_value
+        self._auto_dump("set_active_qa", {"kind": kind, "count": len(qa_value)})
+
+    def clear_active_qa(self, kind: Literal["claimer", "planner", "agent"]):
+        if not self.active_qa:
+            self.active_qa = {}
+        self.active_qa[kind] = []
+        self._auto_dump("clear_active_qa", {"kind": kind})
         
     def get_project_dir(self) -> str:
         """
         Return the project directory(AUTOMAS).
         """
         return self.project_dir
+
+    def set_task_dir(self, task_dir: str):
+        self.task_dir = task_dir or "default"
+        os.makedirs(self.get_tmp_dir(), exist_ok=True)
+        os.makedirs(self.get_output_dir(), exist_ok=True)
+        self._auto_dump("set_task_dir", {"task_dir": self.task_dir})
+
+    def get_tmp_dir(self) -> str:
+        return os.path.join(self.project_dir, "tmp", self.task_dir or "default")
+
+    def get_output_dir(self) -> str:
+        return os.path.join(self.project_dir, "output", self.task_dir or "default")
 
     def get_context(self) -> Dict[str, Any]:
         """
@@ -234,7 +264,9 @@ class ContextManager:
         messages = []
         for channel in self.dialogue_history:
             if is_included(channel):
-                channel_messages = self.dialogue_history.get(channel)
+                channel_messages = self.dialogue_history.get(channel, [])
+                if not channel_messages:
+                    continue
                 if channel == invoker_channel:
                     messages.extend(channel_messages)
                 else:
@@ -571,6 +603,7 @@ class ContextManager:
         self.is_planned = data.get("is_planned", self.is_planned)
         self.is_executing = data.get("is_executing", self.is_executing)
         self.project_dir = data.get("project_dir", self.project_dir)
+        self.task_dir = data.get("task_dir", self.task_dir)
         self.available_resources = self._restore_available_resources(data.get("available_resources", {}))
         self.dialogue_history = data.get("dialogue_history", {})
         self.active_subagents = self._restore_active_subagents(data.get("active_subagents", {}))
@@ -586,6 +619,9 @@ class ContextManager:
         self.latest_agent_id = data.get("latest_agent_id", self.latest_agent_id)
         self.latest_agent_tool_usage = data.get("latest_agent_tool_usage", self.latest_agent_tool_usage)
         self.latest_agent_factory_output = self._restore_factory_output(data.get("latest_agent_factory_output", self.latest_agent_factory_output))
+        self.active_qa = data.get("active_qa", self.active_qa) or {}
+        os.makedirs(self.get_tmp_dir(), exist_ok=True)
+        os.makedirs(self.get_output_dir(), exist_ok=True)
         task_state_data = data.get("task_state")
         if task_state_data is not None:
             self.task_state = self._restore_planned_tasks(task_state_data)
@@ -607,6 +643,7 @@ class ContextManager:
             "latest_agent_id": self.latest_agent_id,
             "latest_agent_tool_usage": self.latest_agent_tool_usage,
             "latest_agent_factory_output": self.latest_agent_factory_output,
+            "active_qa": self.active_qa,
             "next_agent_id": self.next_agent_id,
             "task_state": self.task_state,
             "overall_goal": self.overall_goal,
@@ -618,7 +655,8 @@ class ContextManager:
             "active_subagents": self.active_subagents,
             "consistent_subagent_id": self.consistent_subagent_id,
             "consistentAgent2DefaultChannel": self.consistentAgent2DefaultChannel,
-            "project_dir": self.project_dir
+            "project_dir": self.project_dir,
+            "task_dir": self.task_dir
         }
 
     def _auto_dump(self, reason: Optional[str] = None, params: Optional[Dict[str, Any]] = None):
