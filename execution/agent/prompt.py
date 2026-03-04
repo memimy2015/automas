@@ -156,6 +156,12 @@ Usage Rules:
 6. If a new resource is created, provide its URI instead of its content.
 7. Do not use this tool unless actual progress has been made.
 
+## write_file tool
+
+You can use write or append mode.
+Rules:
+- when using append mode, you had better check it existed first, then append new content to its end.
+
 
 # skills
 {}

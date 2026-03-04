@@ -1,7 +1,10 @@
+from email.mime import base
 from typing import Optional
 from pydantic import BaseModel, Field
 from uuid import uuid4
 from typing import Literal
+from enum import Enum
+
 class ProactiveQuery(BaseModel):
     query: str = Field(description="向用户提出询问补充信息的问题", default="")
 
@@ -56,3 +59,32 @@ class SubmitMessage(BaseModel):
     task_summary: str = Field(..., description="当前任务的摘要, 可以参考过往的信息", required=True)
     task_status: Literal["pending", "completed", "failed", "cancelled"] = Field(..., description="当前任务的状态", required=True)
     resource_reference: list[ResourceReference] = Field(description="当前任务的资源引用", default_factory=list)
+
+class PlannerState(Enum):
+    INIT = "init"
+    CONTINUE = "continue"
+    REPLAN = "replan"
+    FINISHED = "finished"
+    PENDING = "pending"
+
+class SimplifiedSubtaskStep(BaseModel):
+    sub_objective: str = Field(description="子任务的子步骤描述，描述需要清晰完整，带有必要的信息，如任务背景之类的。", default="")
+    agent_id: Optional[int] = Field(description="执行子任务的智能体的ID，如果你发现这个子步骤可以继续复用，就把对应的智能体ID写在这里，否则保持None。", default=None)
+    resource_reference: list[ResourceReference] = Field(description="可能对有当前任务有用的资源引用", default_factory=list)
+
+class SimplifiedSubtask(BaseModel):
+    objective: list[SimplifiedSubtaskStep] = Field(description="子任务的子步骤列表", default_factory=list)
+    task_name: str = Field(description="子任务的名称", default="")
+
+class Replan(BaseModel):
+    plan: list[SimplifiedSubtask] = Field(description="重新规划的子任务列表", default_factory=list)
+    overall_goal: str = Field(description="总目标", default="")
+   
+class ContinueNextStep(BaseModel):
+    resource_reference: list[ResourceReference] = Field(description="对下一个执行的子任务的子步骤可能有帮助的资源引用", default_factory=list)
+    
+class JudgePlannerState(BaseModel):
+    planner_state: Literal["continue", "replan", "finished"] = Field(default="continue", description="规划器下一步应该处于的状态，只能是continue、replan、finished中的")
+    reason: str = Field(description="规划器下一步应该处于的状态的原因", default="")
+    
+    

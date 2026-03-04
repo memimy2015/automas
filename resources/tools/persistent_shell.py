@@ -4,6 +4,7 @@ import queue
 import time
 import os
 import sys
+import re
 
 current_dir = os.path.dirname(os.path.abspath(__file__)) # resources/tools
 resources_dir = os.path.dirname(current_dir) # resources
@@ -56,12 +57,52 @@ class PersistentShell:
                 # Read character by character to handle prompts and lack of newlines
                 char = self.process.stdout.read(1)
                 if not char:
+                    self.is_alive = False
                     break
                 self.output_queue.put(char)
             except ValueError: # file closed
+                self.is_alive = False
                 break
             except Exception:
+                self.is_alive = False
                 break
+
+    def _drain_output_queue(self):
+        while not self.output_queue.empty():
+            try:
+                self.output_queue.get_nowait()
+            except queue.Empty:
+                break
+
+    def _is_process_running(self) -> bool:
+        if not self.process:
+            return False
+        try:
+            return self.process.poll() is None
+        except Exception:
+            return False
+
+    def _restart_terminal(self):
+        try:
+            self.close_terminal()
+        except Exception:
+            pass
+        self.output_queue = queue.Queue()
+        self.create_terminal()
+
+    def _is_dangerous_command(self, command: str) -> bool:
+        cmd = (command or "").strip()
+        if not cmd:
+            return False
+        if cmd == "exit" or cmd.startswith("exit "):
+            return True
+        if cmd == "logout" or cmd.startswith("logout "):
+            return True
+        if re.search(r"(^|\s)exec(\s|$)", cmd):
+            return True
+        if re.search(r"\bkill\b.*\$\$", cmd):
+            return True
+        return False
 
     def execute_command(self, command, timeout=180.0):
         """
@@ -70,10 +111,14 @@ class PersistentShell:
         
         timeout: Total time in seconds to wait for command completion.
         """
-        if not self.is_alive or not self.process:
+        if self._is_dangerous_command(command):
+            self.logger.error(f"Blocked dangerous command: {command}")
+            return "execute status: False\nstdout:\n[Error: Dangerous command blocked]"
+
+        if (not self.is_alive) or (not self.process) or (not self._is_process_running()):
             self.logger.error("Attempted to execute command but terminal is not running.")
             print("Attempted to execute command but terminal is not running.")
-            raise RuntimeError("Terminal is not running. Call create_terminal() first.")
+            self._restart_terminal()
 
         self.logger.info(f"Executing command: {command}")
         print(f"Executing command: {command}")
@@ -86,9 +131,22 @@ class PersistentShell:
         # Wrap command to print exit code and sentinel
         # We use ; so that even if command fails, we get the exit code and sentinel.
         full_command = f"{command}; echo \"{exit_code_marker}$?\"; echo '{sentinel}'\n"
-        
-        self.process.stdin.write(full_command)
-        self.process.stdin.flush()
+        self._drain_output_queue()
+        wrote = False
+        for attempt in range(2):
+            try:
+                self.process.stdin.write(full_command)
+                self.process.stdin.flush()
+                wrote = True
+                break
+            except BrokenPipeError:
+                self.is_alive = False
+                self._restart_terminal()
+            except Exception:
+                self.is_alive = False
+                self._restart_terminal()
+        if not wrote:
+            return "execute status: False\nstdout:\n[Error: Broken pipe, terminal restarted but write failed]"
         output_buffer = []
         start_time = time.time()
         

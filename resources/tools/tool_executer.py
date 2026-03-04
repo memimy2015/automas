@@ -36,7 +36,7 @@ class ToolExecuter:
             "type": "function",
             "function": {
                 "name": "write_file",
-                "description": "写入文件，包括txt，html，markdown，py等文本内容，主要是为了后续的shell命令执行。如果需要修改文件内容，需要先删除文件，再重新写入完整内容。",
+                "description": "写入或追加文本文件内容（txt/html/markdown/py等）。mode=write 会覆盖写入；mode=append 会在文件末尾追加，最好在文件已经存在时使用追加。目录不存在会自动创建。",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -47,6 +47,11 @@ class ToolExecuter:
                         "content": {
                             "type": "string",
                             "description": "文件内容"
+                        },
+                        "mode": {
+                            "type": "string",
+                            "description": "写入模式：write 覆盖写入；append 追加写入",
+                            "enum": ["write", "append"]
                         }
                     },
                     "required": ["file_path", "content"]
@@ -151,7 +156,7 @@ class ToolExecuter:
         if tool_name == "command":
             return self.shell.execute_command(args["command"])
         elif tool_name == "write_file":
-            return write_file(args["file_path"], args["content"])
+            return write_file(args["file_path"], args["content"], args.get("mode", "write"))
         elif tool_name == "read_file":
             return read_file(args["file_path"])
         elif tool_name == "load_full_skill_doc":

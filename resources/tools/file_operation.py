@@ -39,18 +39,20 @@ def read_file(file_path):
         logger.error(error_msg)
         return error_msg
 
-def write_file(file_path, content):
+def write_file(file_path, content, mode: str = "write"):
     """
     Writes content to a file. Creates directories if they don't exist.
     
     Args:
         file_path (str): The path to the file to write.
         content (str): The content to write to the file.
+        mode (str): write or append.
         
     Returns:
         str: Success message or error message.
     """
-    logger.info(f"Writing to file: {file_path}")
+    file_mode = "a" if mode == "append" else "w"
+    logger.info(f"Writing to file: {file_path} (mode={mode})")
     try:
         # Create directory if it doesn't exist
         directory = os.path.dirname(file_path)
@@ -58,10 +60,10 @@ def write_file(file_path, content):
             logger.info(f"Creating directory: {directory}")
             os.makedirs(directory)
             
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, file_mode, encoding='utf-8') as f:
             f.write(content)
             
-        success_msg = f"Successfully wrote to {file_path}"
+        success_msg = f"Successfully wrote to {file_path}" if file_mode == "w" else f"Successfully appended to {file_path}"
         logger.info(success_msg)
         return success_msg
     except Exception as e:

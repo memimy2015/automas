@@ -175,8 +175,7 @@ agent_log/
 dump/
 
 # essay
-essay/*.pdf
-essay/*.PDF
+essay/
 
 # cleanup
 # whole_cleanup.sh
@@ -190,3 +189,7 @@ debug.md
 # large local resources/results
 testcase_resources/
 testcase_results/
+output/
+traces/
+pdf2img.py
+

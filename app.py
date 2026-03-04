@@ -17,6 +17,7 @@ from miscellaneous.observe import observe
 from cozeloop.logger import set_log_level
 import logging
 from miscellaneous.cozeloop_preprocess import loop_process_output, step_process_output, step_process_input
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ TEST_CASES["TEST_CASE_19"] = """
 TEST_CASES["TEST_CASE_20"] = """
 针对 Agent技术 进行前沿技术研究，并生成一份包含核心论文分析及交互式HTML报告:
 1. 前沿核心论文检索
-搜索范围: 来源:重点关注 arXiv 以及相关领域的顶级会议或期刊(例如{会议/期刊名称})，时间范围:{时间范围}
+搜索范围: 来源:重点关注 arXiv 以及相关领域的顶级会议或期刊(例如{会议/期刊名称})，时间范围: 2025年至今
 - 筛选标准: 选取 5 篇最具技术创新性、前沿性和潜在影响力的论文。
 - 信息提取 (每篇论文): 基础信息， 影响力， 核心内容 (创新点， 方法， 结果， 链接)。
 2. 深度分析与可视化报告生成
@@ -128,6 +129,21 @@ TEST_CASES["TEST_CASE_21"] = """
 2. 评论区观点分析:阅读完该帖子后，分析该帖子的评论区，总结评论的总体情绪是积极、消极还是中立，并简要说明判断依据(使用浏览器，不要使用数据分析方案)。
 3. 关键讨论点提取:从评论区中识别并列出最具代表性和价值的关键讨论点或争议点。
 4. 最终产物: pdf文档，包含上述内容，如果有遗漏部分在报告中提示用户。
+"""
+
+# 提前主动判断结束了，cozeloop上报错是因为其他原因，跟任务无关
+TEST_CASES["TEST_CASE_22"] = """
+这是一份电商用户消费数据集，请你对这份数据进行完整的数据分析。请从用户画像、消费能力、品类偏好、复购情况、城市等级差异这几个维度进行分析，并给出结论和业务建议。
+数据集：/mnt/c/Users/Admin/Desktop/20260203/AIME/automas/testcase_resources/数据分析(case22)/电商用户消费数据集.csv
+字段说明：/mnt/c/Users/Admin/Desktop/20260203/AIME/automas/testcase_resources/数据分析(case22)/电商用户消费数据集-字段说明.txt
+"""
+
+# 已经完成
+TEST_CASES["TEST_CASE_23"] = """
+阅读指定目录代码 /mnt/c/Users/Admin/Desktop/20260203/AIME/automas/testcase_resources/prd设计(case23)/automas ，描述当前代码实现的主要功能。
+根据代码主要功能，编写需求设计文档，以及前端交互原型。
+整个过程要先做需求分析，然后做功能设计、交互设计、html原型开发。
+设计好原型后，需要利用浏览器进行测试，并且进行相应优化。
 """
 
 # DEFAULT_TOOLS_LIST = ["command", "write_file", "read_file", "update_progress", "call_user"]
@@ -225,75 +241,93 @@ def main():
                 "task_plan": task_plan,
                 "formatted_task_plan": formatted_task_plan
             }
+        try:
+            if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
+                print("=====Debug Mode Enabled=====")
+                AUTO_DUMP = os.getenv("IS_DEBUG_ENABLED", "1") == "1"
+                shell = PersistentShell()
+                tool_executer = ToolExecuter()
+                context_manager = ContextManager()
+                if args.load_from_file:
+                    context_manager.load(args.load_from_file)
+                context_manager.set_task_dir(args.task_dir)
+                if AUTO_DUMP:
+                    context_manager.enable_auto_dump()
+                notifier = Notifier(context_manager)
+                DEFAULT_TOOLS_LIST = tool_executer.list_tools()
+                print(f"Available tools: {DEFAULT_TOOLS_LIST}")
+                # for test only
+                # context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
+                # context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
 
-        if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
-            print("=====Debug Mode Enabled=====")
-            AUTO_DUMP = os.getenv("IS_DEBUG_ENABLED", "1") == "1"
-            shell = PersistentShell()
-            tool_executer = ToolExecuter()
-            context_manager = ContextManager()
-            if args.load_from_file:
-                context_manager.load(args.load_from_file)
-            context_manager.set_task_dir(args.task_dir)
-            if AUTO_DUMP:
-                context_manager.enable_auto_dump()
-            notifier = Notifier(context_manager)
-            DEFAULT_TOOLS_LIST = tool_executer.list_tools()
-            print(f"Available tools: {DEFAULT_TOOLS_LIST}")
-            # for test only
-            # context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
-            # context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
+                claim_agent = ClaimerAgent(notifier, context_manager)
+                plan_agent = PlannerAgent(context_manager, notifier, tool_executer, ["call_user", "read_file", "command"])
+                summarizer_agent = SummarizerAgent(notifier, context_manager)
+                agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
+                if not context_manager.is_clarified:
+                    claim_agent.run(args.query if args.query else selected_test_case)
+                if not context_manager.is_planned:
+                    plan_result = plan_agent.run()
+                    is_accomplished = plan_result["is_mission_accomplished"]
+                else:
+                    is_accomplished = context_manager.is_accomplished()
 
-            claim_agent = ClaimerAgent(notifier, context_manager)
-            plan_agent = PlannerAgent(context_manager, notifier, tool_executer, ["call_user", "read_file", "command"])
-            summarizer_agent = SummarizerAgent(notifier, context_manager)
-            agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
-            if not context_manager.is_clarified:
+                result = loop(
+                    is_accomplished=is_accomplished,
+                    agent_factory=agent_factory,
+                    context_manager=context_manager,
+                    plan_agent=plan_agent,
+                    summarizer_agent=summarizer_agent
+                )
+            else:
+                shell = PersistentShell()
+                tool_executer = ToolExecuter()
+                context_manager = ContextManager()
+                context_manager.set_task_dir(args.task_dir)
+                notifier = Notifier(context_manager)
+                DEFAULT_TOOLS_LIST = tool_executer.list_tools()
+                print(f"Available tools: {DEFAULT_TOOLS_LIST}")
+                # for test only
+                # context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
+                # context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
+
+                claim_agent = ClaimerAgent(notifier, context_manager)
+                plan_agent = PlannerAgent(context_manager, notifier, tool_executer, ["call_user", "read_file", "command"])
+                summarizer_agent = SummarizerAgent(notifier, context_manager)
+                agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
                 claim_agent.run(args.query if args.query else selected_test_case)
-            if not context_manager.is_planned:
                 plan_result = plan_agent.run()
                 is_accomplished = plan_result["is_mission_accomplished"]
-            else:
-                is_accomplished = context_manager.is_accomplished()
-
-            result = loop(
-                is_accomplished=is_accomplished,
-                agent_factory=agent_factory,
-                context_manager=context_manager,
-                plan_agent=plan_agent,
-                summarizer_agent=summarizer_agent
-            )
-        else:
-            shell = PersistentShell()
-            tool_executer = ToolExecuter()
-            context_manager = ContextManager()
-            context_manager.set_task_dir(args.task_dir)
-            notifier = Notifier(context_manager)
-            DEFAULT_TOOLS_LIST = tool_executer.list_tools()
-            print(f"Available tools: {DEFAULT_TOOLS_LIST}")
-            # for test only
-            # context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
-            # context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
-
-            claim_agent = ClaimerAgent(notifier, context_manager)
-            plan_agent = PlannerAgent(context_manager, notifier, tool_executer, ["call_user", "read_file", "command"])
-            summarizer_agent = SummarizerAgent(notifier, context_manager)
-            agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
-            claim_agent.run(args.query if args.query else selected_test_case)
-            plan_result = plan_agent.run()
-            is_accomplished = plan_result["is_mission_accomplished"]
-            result = loop(
-                is_accomplished=is_accomplished,
-                agent_factory=agent_factory,
-                context_manager=context_manager,
-                plan_agent=plan_agent,
-                summarizer_agent=summarizer_agent
-            )
+                result = loop(
+                    is_accomplished=is_accomplished,
+                    agent_factory=agent_factory,
+                    context_manager=context_manager,
+                    plan_agent=plan_agent,
+                    summarizer_agent=summarizer_agent
+                )
+        finally:
+            if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+                header = get_span_from_context().to_header()
+                print(header)
+                trace_id = header['X-Cozeloop-Traceparent'].split('-')[1]
+                print(f"Trace ID: {trace_id}")
+                dir_path = os.path.join(os.path.join(context_manager.project_dir, "traces"), context_manager.task_dir)
+                os.makedirs(dir_path, exist_ok=True)
+                path = os.path.join(dir_path, f"{trace_id}.txt")
+                with open(path, "w") as f:  
+                    f.write(trace_id)
             
     go()
 
 if __name__ == "__main__":
-    main()
-    if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
-        flush()
+    try:
+        main()
+        if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+            flush()
+    except Exception as e:
+        if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+            flush()
+        print(f"FATAL: {e}")
+        traceback.print_exc()
+    
     

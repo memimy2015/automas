@@ -1,3 +1,5 @@
+from llm.json_schemas import ContinueNextStep
+from llm.json_schemas import Replan
 from llm.json_schemas import FactoryOutput
 import sys
 from collections import defaultdict
@@ -7,13 +9,14 @@ from llm.json_schemas import NextStep
 from llm.json_schemas import Subtask
 from llm.json_schemas import SubtaskSteps
 from llm.json_schemas import PlannedTasks
-from llm.json_schemas import ResourceReference
+from llm.json_schemas import ResourceReference, PlannerState
 from typing import Tuple
 from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime
 from uuid import uuid4
 from pydantic import BaseModel
 import json
+import copy
 
 class ContextManager:
     """
@@ -46,6 +49,7 @@ class ContextManager:
         self.is_clarified: bool = False
         self.is_planned: bool = False
         self.is_executing: bool = False
+        self.planner_state: PlannerState = PlannerState.INIT
 
         # 可用资源 (Available Resources)
         # Key: Description, Value: Resource URI (URL, File Path)
@@ -165,6 +169,13 @@ class ContextManager:
         self.is_planned = is_planned
         self._auto_dump("set_is_planned", {"is_planned": is_planned})
 
+    def set_planner_state(self, state: PlannerState):
+        self.planner_state = state
+        self._auto_dump("set_planner_state", {"planner_state": state.value})
+    
+    def get_planner_state(self):
+        return self.planner_state
+
     def handle_pending_tool_call(self, tool_executer, agent_id: int, channel: str):
         if not self.loaded_from_dump:
             return
@@ -215,17 +226,93 @@ class ContextManager:
         self.verify_index()
         if dump:
             self._auto_dump("set_task_status", {"overall_goal": task_state.overall_goal})
+
+    def _merge_ContinueNextStep(self, state: ContinueNextStep):
+        i, j = self._get_current_indices()
+        self.task_state.tasks[i].objective[j].resource_reference = state.resource_reference
+
+    def _merge_Replan(self, state: Replan):
+        existing_steps_by_agent_id: Dict[int, SubtaskSteps] = {}
+        for task in self.task_state.tasks:
+            for step in task.objective:
+                if step.agent_id is None:
+                    continue
+                if step.agent_id not in existing_steps_by_agent_id:
+                    existing_steps_by_agent_id[step.agent_id] = step
+
+        new_tasks: List[Subtask] = []
+        for simplified_task in state.plan:
+            new_steps: List[SubtaskSteps] = []
+            for simplified_step in simplified_task.objective:
+                agent_id = simplified_step.agent_id
+                if agent_id is not None and agent_id in existing_steps_by_agent_id:
+                    existing = existing_steps_by_agent_id[agent_id]
+                    if hasattr(existing, "model_copy"):
+                        new_steps.append(existing.model_copy(deep=True))
+                    elif hasattr(existing, "copy"):
+                        new_steps.append(existing.copy(deep=True))
+                    else:
+                        new_steps.append(copy.deepcopy(existing))
+                else:
+                    new_steps.append(SubtaskSteps(sub_objective=simplified_step.sub_objective, agent_id=agent_id, resource_reference=simplified_step.resource_reference))
+            new_tasks.append(Subtask(objective=new_steps, task_name=simplified_task.task_name))
+
+        next_step = NextStep(objective_index=0, sub_objective_index=0)
+        for i, task in enumerate(new_tasks):
+            for j, step in enumerate(task.objective):
+                if step.status == "pending":
+                    next_step = NextStep(objective_index=i, sub_objective_index=j)
+                    break
+            else:
+                continue
+            break
+
+        for task in new_tasks:
+            task.finished = all(step.status == "completed" for step in task.objective)
+        is_mission_accomplished = bool(new_tasks) and all(task.finished for task in new_tasks)
+
+        self.task_state = PlannedTasks(
+            tasks=new_tasks,
+            next_step=next_step,
+            need_replan=False,
+            is_mission_accomplished=is_mission_accomplished,
+            overall_goal=state.overall_goal,
+            replan_reason="",
+            task_specification=[],
+        )
+        self.overall_goal = state.overall_goal
+
+    def update_task_status(self, state: PlannedTasks | Replan | ContinueNextStep, dump: bool = True):
+        self.verify_index()
+        if isinstance(state, PlannedTasks):
+            self.task_state = state
+        elif isinstance(state, Replan):
+            self._merge_Replan(state)
+        elif isinstance(state, ContinueNextStep):
+            self._merge_ContinueNextStep(state)
+        else:
+            raise ValueError(f"Unknown state type: {type(state)}")
+        if dump:
+            self._auto_dump("update_task_status", {})
+
+    def set_cancel_all_pending_plans(self):
+        for task in self.task_state.tasks:
+            for step in task.objective:
+                if step.status == "pending":
+                    step.status = "cancelled"
+        self._auto_dump("set_cancel_all_pending_plans", {})
         
     def verify_index(self):
         task = self.task_state
         idx_i, idx_j = self._get_current_indices()
         for i, subtask in enumerate(task.tasks):
             for j, sub_objective in enumerate(subtask.objective):
+                # print(f"sub_objective: {sub_objective.sub_objective}, status: {sub_objective.status}, i: {i + 1}, j: {j + 1}")
                 if sub_objective.status == "pending":
                     # if i != idx_i or j != idx_j:
                     #     print(f"Current index: {idx_i}, {idx_j}, expected index {i}, {j}")
-                    assert i == idx_i and j == idx_j, f"Current index: {idx_i}, {idx_j}, expected index {i}, {j}"
-                    print(f"Current index: {idx_i}, {idx_j}, expected index {i}, {j}")
+                    # assert i == idx_i and j == idx_j, f"Current index: {idx_i}, {idx_j}, expected index {i}, {j}"
+                    print(f"Current index: {idx_i}, {idx_j}, expected index {i}, {j}， CHANGED")
                     task.next_step = NextStep(
                         objective_index=i,
                         sub_objective_index=j,
@@ -320,6 +407,7 @@ class ContextManager:
                 sub_objective.resource_reference.extend([v for v in files.values() if v.description not in cur_resources and v.URI not in cur_resources])
                 self.add_available_resources(files)
                 print(f"Submitted to {obj_idx + 1}.{sub_idx + 1} {sub_objective.sub_objective}")
+                self.verify_index()
             else:
                 print("Invalid sub-objective index.")
                 self._auto_dump("submit_sub_objective", {"error": "Invalid sub-objective index."})
@@ -425,10 +513,10 @@ class ContextManager:
         task_finished_mark = "[x]" if task.finished else "[ ]"
         markdown_lines.append(f"- {task_finished_mark} **Task {index}: {task.task_name}**")
         
-        if hasattr(task, 'resource_reference') and task.resource_reference:
-                markdown_lines.append(f"  > **Resource References**:")
-                for ref in task.resource_reference:
-                    markdown_lines.append(f"    - [{ref.type}] {ref.description}: {ref.URI}")
+        # if hasattr(task, 'resource_reference') and task.resource_reference:
+        #         markdown_lines.append(f"  > **Resource References**:")
+        #         for ref in task.resource_reference:
+        #             markdown_lines.append(f"    - [{ref.type}] {ref.description}: {ref.URI}")
 
         for j, sub_obj in enumerate(task.objective, 1):
             markdown_lines.append(self.get_formatted_subtask_step(sub_obj, index, j))
@@ -529,10 +617,13 @@ class ContextManager:
         """
         print("===========================Refresh active subagents===========================")
         current_activate_agent = list(self.consistent_subagent_id)
+        available_resources: Dict[str, ResourceReference] = {}
         for task in resp.tasks:
             for sub_task in task.objective:
                 if sub_task.status == "completed":
                     current_activate_agent.append(sub_task.agent_id)
+                    # res = {r.description: r for r in sub_task.resource_reference}
+                    # available_resources.update(res)
         self.active_subagents = {k: v for k, v in self.active_subagents.items() if k in current_activate_agent}
         print(f"=====Active subagents=====: \n {self.active_subagents.keys()}")
         channel_ls = []
@@ -540,14 +631,17 @@ class ContextManager:
             for channel in channels:
                 channel_ls.append(channel)
         self.dialogue_history = {k: v for k, v in self.dialogue_history.items() if k in channel_ls}
+        self.available_resources = available_resources
         print("===========================Refresh active subagents END===========================")
         if dump:
             self._auto_dump("refresh_active_subagent", {"active_subagents": list(self.active_subagents.keys())})
 
-    def apply_planned_tasks(self, resp: PlannedTasks):
-        self.set_task_status(resp, dump=False)
-        # if need_replan:
-        self.refresh_active_subagent(resp, dump=False)
+    def apply_planned_tasks(self, resp: PlannedTasks | Replan | ContinueNextStep):
+        """
+        Set latest plan and active agents to the context manager.
+        """
+        self.update_task_status(resp, dump=False)
+        self.refresh_active_subagent(self.task_state, dump=False)
         self._auto_dump("apply_planned_tasks", {})
         
     def clear_active_subagents(self):
@@ -602,6 +696,12 @@ class ContextManager:
         self.is_clarified = data.get("is_clarified", self.is_clarified)
         self.is_planned = data.get("is_planned", self.is_planned)
         self.is_executing = data.get("is_executing", self.is_executing)
+        try:
+            planner_state_value = data.get("planner_state")
+            if planner_state_value is not None:
+                self.planner_state = PlannerState(planner_state_value)
+        except Exception:
+            self.planner_state = PlannerState.INIT
         self.project_dir = data.get("project_dir", self.project_dir)
         self.task_dir = data.get("task_dir", self.task_dir)
         self.available_resources = self._restore_available_resources(data.get("available_resources", {}))
@@ -650,6 +750,7 @@ class ContextManager:
             "is_clarified": self.is_clarified,
             "is_planned": self.is_planned,
             "is_executing": self.is_executing,
+            "planner_state": self.planner_state.value,
             "available_resources": self.available_resources,
             "dialogue_history": self.dialogue_history,
             "active_subagents": self.active_subagents,

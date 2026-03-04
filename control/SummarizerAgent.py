@@ -115,6 +115,8 @@ class SummarizerAgent:
         )
         self._prepare_context()
         finish_reason, resp, usage = llm_call(messages=self.messages, tools=[])
+        if finish_reason == "error":
+            raise RuntimeError(resp.content)
         self.append_message(
             {
                 "role": "assistant",

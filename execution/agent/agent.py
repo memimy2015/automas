@@ -127,6 +127,9 @@ class Agent:
             while True:
                 self._prepare_context()
                 finish_reason, resp_msg, usage = llm_call(messages=self.messages, tools=tools)
+                if finish_reason == "error":
+                    qa_snapshot = list(QA)
+                    return resp_msg.content, usage, "llm_error", self.tool_usage, qa_snapshot
                 if finish_reason != "tool_calls":
                     content = resp_msg.content
                     self.append_message({"role": "assistant", "content": content}, usage.model_dump(), channel=self.identity + "_main")
@@ -134,6 +137,8 @@ class Agent:
                     try:
                         self._prepare_context()
                         finish_reason, resp_msg, submit_usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Submit")
+                        if finish_reason == "error":
+                            raise RuntimeError(resp_msg.content)
                         resp_msg = resp_msg.parsed
                         resources = {}
                         for resource in resp_msg.resource_reference:

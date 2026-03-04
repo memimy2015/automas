@@ -17,7 +17,7 @@ def search(query):
         body = {
             "Query": query,
             "SearchType": "web",
-            "Count": 15,
+            "Count": 7,
             "Filter": {
                 "NeedContent": False,
                 "NeedUrl": False

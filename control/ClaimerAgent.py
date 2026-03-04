@@ -92,6 +92,8 @@ class ClaimerAgent:
             self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"])
             self._prepare_context()
             finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
+            if finish_reason == "error":
+                raise RuntimeError(resp.content)
             resp = resp.parsed
             print(f'Finish Reason: {finish_reason}')
             while resp.need_more_info:
@@ -107,6 +109,8 @@ class ClaimerAgent:
                     self.context_manager.set_active_qa("claimer", QA)
                 self._prepare_context()
                 finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
+                if finish_reason == "error":
+                    raise RuntimeError(resp.content)
                 resp = resp.parsed
             print(f"Source reference: \n {resp.resource_reference}")
             print(f"Refined objective: \n {resp.refined_objective}")
