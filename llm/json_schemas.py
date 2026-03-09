@@ -35,7 +35,7 @@ class Subtask(BaseModel):
     objective: list[SubtaskSteps] = Field(description="子任务的步骤列表", default_factory=list)
     task_name: str = Field(description="子任务的名称", default="")
     finished: bool = Field(default=False, description="子任务是否完成")
-    resource_reference: list[ResourceReference] = Field(description="子任务的资源引用", default_factory=list)
+    # resource_reference: list[ResourceReference] = Field(description="子任务的资源引用", default_factory=list)
 
 class NextStep(BaseModel):
     objective_index: int = Field(default=0, description="子任务的索引，从0开始")
@@ -44,20 +44,21 @@ class NextStep(BaseModel):
 class PlannedTasks(BaseModel):
     tasks: list[Subtask]= Field(description="子任务列表", default_factory=list)
     next_step: NextStep = Field(default=NextStep(), description="下一个执行的子任务以及子任务的子步骤的索引")
-    need_replan: bool = Field(default=False, description="是否需要重新规划")
+    # need_replan: bool = Field(default=False, description="是否需要重新规划")
     is_mission_accomplished: bool = Field(default=False, description="是否所有子任务都已完成")
     overall_goal: str = Field(description="总目标", default="")
-    replan_reason: str = Field(description="重新规划的原因", default="")
-    task_specification: list[ProactiveQuery] = Field(description="重新规划的任务时，以提问方式向用户询问需要补充的信息的列表，提问最好给出选项。", default_factory=list)
+    # replan_reason: str = Field(description="重新规划的原因", default="")
+    # task_specification: list[ProactiveQuery] = Field(description="重新规划的任务时，以提问方式向用户询问需要补充的信息的列表，提问最好给出选项。", default_factory=list)
     
 class FactoryOutput(BaseModel):
+    role_name: str = Field(description="角色的名称，可以精炼一点，比如说平面设计师、内容创作助手等", default="")
     role_setting: str = Field(description="角色身份信息的设置", default="")
     task_specification: str = Field(description="给出任务的更多信息，如使命、能力边界(如访问权限之类的)、任务注意事项、可能出现的问题和解决方案。markdown格式，注意换行。", default="")
     
 class SubmitMessage(BaseModel):
     task_name: str = Field(..., description="当前任务名称", required=True)
     task_summary: str = Field(..., description="当前任务的摘要, 可以参考过往的信息", required=True)
-    task_status: Literal["pending", "completed", "failed", "cancelled"] = Field(..., description="当前任务的状态", required=True)
+    task_status: Literal["completed", "failed", "cancelled"] = Field(..., description="当前任务的状态, 如果不是completed记得通知一下用户，说明为什么没有完成任务", required=True)
     resource_reference: list[ResourceReference] = Field(description="当前任务的资源引用", default_factory=list)
 
 class PlannerState(Enum):
@@ -78,10 +79,11 @@ class SimplifiedSubtask(BaseModel):
 
 class Replan(BaseModel):
     plan: list[SimplifiedSubtask] = Field(description="重新规划的子任务列表", default_factory=list)
-    overall_goal: str = Field(description="总目标", default="")
+    overall_goal: str = Field(description="总目标，你可以视情况调整", default="")
    
 class ContinueNextStep(BaseModel):
     resource_reference: list[ResourceReference] = Field(description="对下一个执行的子任务的子步骤可能有帮助的资源引用", default_factory=list)
+    sub_objective: str = Field(description="下一个执行的子任务的子步骤的描述", default="")
     
 class JudgePlannerState(BaseModel):
     planner_state: Literal["continue", "replan", "finished"] = Field(default="continue", description="规划器下一步应该处于的状态，只能是continue、replan、finished中的")

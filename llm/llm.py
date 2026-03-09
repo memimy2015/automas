@@ -14,6 +14,7 @@ from control.context_manager import ContextManager
 from config.logger import setup_logger
 import time
 import random
+from openai import OpenAI
 
 MAX_RETRIES = 5
 
@@ -23,11 +24,15 @@ context_manager = ContextManager()
 api_key = os.environ.get("ARK_API_KEY")
 model = os.environ.get("MODEL")
 
-client = Ark(   
-    base_url="https://ark.cn-beijing.volces.com/api/v3",
+# client = Ark(   
+#     base_url="https://ark.cn-beijing.volces.com/api/v3",
+#     api_key=api_key, 
+# )
+
+client = OpenAI(
+    base_url=os.environ.get("ARK_BASE_URL"),    
     api_key=api_key, 
 )
-
 
 registered_schema = {}
 

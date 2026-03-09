@@ -64,14 +64,14 @@ class SummarizerAgent:
             self.agent_id = agent_id
             self.identity = channel.rsplit("_main", 1)[0]
             if channel not in self.context_manager.dialogue_history:
-                self.context_manager.add_active_subagent(self.agent_id, channel)
+                self.context_manager.add_active_subagent(self.agent_id, channel, dump=False)
         else:
-            self.agent_id = self.context_manager.obtain_id()
+            self.agent_id = self.context_manager.obtain_id(dump=False)
             self.identity = f"SummarizerAgent_{self.agent_id}"
-            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Summarizer")
-            self.append_message({"role": "system", "content": prompt}, self.identity + "_main")
+            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Summarizer", dump=False)
+            self.append_message({"role": "system", "content": prompt}, self.identity + "_main", dump=False)
 
-    def append_message(self, message: dict, channel: str | List[str] = None, usage: dict = None):
+    def append_message(self, message: dict, channel: str | List[str] = None, usage: dict = None, dump: bool = True):
         """
         Append a message to the message list of the channel and current agent message list.
         Args:
@@ -81,7 +81,7 @@ class SummarizerAgent:
         if channel is None:
             channel = self.identity + "_main"
         # self.messages.append(message) # 不能删，Summarizer只执行一次，所以没有prepare_context函数为每次执行提供上下文吗，这里选择直接加入messages
-        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}]) # 只用作记录
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}], dump=dump) # 只用作记录
     
     # def extend_messages(self, messages: list):
     #     self.messages.extend(messages)
@@ -92,39 +92,41 @@ class SummarizerAgent:
         process_outputs=summarizer_process_output,
     )
     def run(self):
-        # self.extend_messages(
-        #     self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", "Claimer*"], formatted=False) 
-        # )
-        task_status = self.context_manager.get_task_status()[0]
-        # formatted Plan / task_status
-        formatted_status = self.context_manager.get_formatted_plan(task_status)
-        self.append_message(
-            {
-                "role": "user", 
-                "content": f"当前任务已结束，描述信息为：\n {formatted_status}"
-            }   
-            ,
-            self.identity + "_main"
-        )
-        self.append_message(
-            {
-                "role": "user",
-                "content": f"根据之前的信息，找出我一开始提出的要求所对应的资源，需要名字、描述和URI，确保信息准确，并且详细的总结一下信息。我一开始的要求是：{self.context_manager.overall_goal}"
-            },
-            self.identity + "_main"
-        )
-        self._prepare_context()
-        finish_reason, resp, usage = llm_call(messages=self.messages, tools=[])
-        if finish_reason == "error":
-            raise RuntimeError(resp.content)
-        self.append_message(
-            {
-                "role": "assistant",
-                "content": resp.model_dump()
-            },
-            self.identity + "_main"
-        )
-        return resp.content, usage
+        try:
+            task_status = self.context_manager.get_task_status()[0]
+            formatted_status = self.context_manager.get_formatted_plan(task_status)
+            self.append_message(
+                {
+                    "role": "user", 
+                    "content": f"当前任务已结束，描述信息为：\n {formatted_status}"
+                }   
+                ,
+                self.identity + "_main",
+                dump=False
+            )
+            self.append_message(
+                {
+                    "role": "user",
+                    "content": f"根据之前的信息，找出我一开始提出的要求所对应的资源，需要名字、描述和URI，确保信息准确，并且详细的总结一下信息。我一开始的要求是：{self.context_manager.overall_goal}"
+                },
+                self.identity + "_main",
+                dump=True
+            )
+            self._prepare_context()
+            finish_reason, resp, usage = llm_call(messages=self.messages, tools=[])
+            if finish_reason == "error":
+                raise RuntimeError(resp.content)
+            self.append_message(
+                {
+                    "role": "assistant",
+                    "content": resp.model_dump()
+                },
+                self.identity + "_main",
+                dump=True
+            )
+            return resp.content, usage
+        finally:
+            self.context_manager._auto_dump("summarizer_exit", {"agent_id": self.agent_id})
     
     def _prepare_context(self):
         self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", "Claimer*", self.identity + "_main"], formatted=False)

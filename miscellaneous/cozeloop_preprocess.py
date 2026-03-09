@@ -111,7 +111,7 @@ def planner_process_output(input: dict) -> dict:
     return {
             "is_mission_accomplished": input["is_mission_accomplished"],
             "formatted_plan": input["formatted_plan"],
-            # "total_usage": input["total_usage"].model_dump(),
+            "action": input["action"].model_dump(),
             "total_usage": input["total_usage"].model_dump(),
             "QA": input["QA"]
         }

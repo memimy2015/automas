@@ -85,24 +85,26 @@ class ContextManager:
         self.loaded_from_dump: bool = False
         self.pending_tool_call_channels: set[str] = set()
         
-    def register_consistent_subagent(self, agent_id: int, default_channel: str, agent_name: str):
+    def register_consistent_subagent(self, agent_id: int, default_channel: str, agent_name: str, dump: bool = True):
         """
         Register a consistent subagent.
         """
         self.consistent_subagent_id[agent_id] = default_channel
         self.active_subagents[agent_id].add(default_channel)
         self.consistentAgent2DefaultChannel[agent_name] = default_channel
-        self._auto_dump("register_consistent_subagent", {"agent_id": agent_id, "channel": default_channel, "name": agent_name})
+        if dump:
+            self._auto_dump("register_consistent_subagent", {"agent_id": agent_id, "channel": default_channel, "name": agent_name})
 
-    def set_latest_agent(self, agent_id: int):
+    def set_latest_agent(self, agent_id: int, dump: bool = True):
         self.latest_agent_id = agent_id
         self.latest_agent_tool_usage = {
             "agent_id": agent_id,
             "tool_usage": {}
         }
-        self._auto_dump("set_latest_agent", {"agent_id": agent_id})
+        if dump:
+            self._auto_dump("set_latest_agent", {"agent_id": agent_id})
 
-    def record_tool_usage(self, agent_id: int, tool_name: str):
+    def record_tool_usage(self, agent_id: int, tool_name: str, dump: bool = True):
         if self.latest_agent_id != agent_id:
             return
         if not self.latest_agent_tool_usage:
@@ -112,23 +114,26 @@ class ContextManager:
             }
         usage = self.latest_agent_tool_usage["tool_usage"]
         usage[tool_name] = usage.get(tool_name, 0) + 1
-        self._auto_dump("record_tool_usage", {"agent_id": agent_id, "tool_name": tool_name, "count": usage[tool_name]})
+        if dump:
+            self._auto_dump("record_tool_usage", {"agent_id": agent_id, "tool_name": tool_name, "count": usage[tool_name]})
 
     def get_active_qa(self, kind: Literal["claimer", "planner", "agent"]) -> List[Dict[str, Any]]:
         return list((self.active_qa or {}).get(kind, []) or [])
 
-    def set_active_qa(self, kind: Literal["claimer", "planner", "agent"], qa: List[Dict[str, Any]]):
+    def set_active_qa(self, kind: Literal["claimer", "planner", "agent"], qa: List[Dict[str, Any]], dump: bool = True):
         qa_value = list(qa or [])
         if not self.active_qa:
             self.active_qa = {}
         self.active_qa[kind] = qa_value
-        self._auto_dump("set_active_qa", {"kind": kind, "count": len(qa_value)})
+        if dump:
+            self._auto_dump("set_active_qa", {"kind": kind, "count": len(qa_value)})
 
-    def clear_active_qa(self, kind: Literal["claimer", "planner", "agent"]):
+    def clear_active_qa(self, kind: Literal["claimer", "planner", "agent"], dump: bool = True):
         if not self.active_qa:
             self.active_qa = {}
         self.active_qa[kind] = []
-        self._auto_dump("clear_active_qa", {"kind": kind})
+        if dump:
+            self._auto_dump("clear_active_qa", {"kind": kind})
         
     def get_project_dir(self) -> str:
         """
@@ -136,11 +141,12 @@ class ContextManager:
         """
         return self.project_dir
 
-    def set_task_dir(self, task_dir: str):
+    def set_task_dir(self, task_dir: str, dump: bool = True):
         self.task_dir = task_dir or "default"
         os.makedirs(self.get_tmp_dir(), exist_ok=True)
         os.makedirs(self.get_output_dir(), exist_ok=True)
-        self._auto_dump("set_task_dir", {"task_dir": self.task_dir})
+        if dump:
+            self._auto_dump("set_task_dir", {"task_dir": self.task_dir})
 
     def get_tmp_dir(self) -> str:
         return os.path.join(self.project_dir, "tmp", self.task_dir or "default")
@@ -165,13 +171,15 @@ class ContextManager:
         """
         return self.task_state, self.task_state.model_dump_json(indent=2)
 
-    def set_is_planned(self, is_planned: bool):
+    def set_is_planned(self, is_planned: bool, dump: bool = True):
         self.is_planned = is_planned
-        self._auto_dump("set_is_planned", {"is_planned": is_planned})
+        if dump:
+            self._auto_dump("set_is_planned", {"is_planned": is_planned})
 
-    def set_planner_state(self, state: PlannerState):
+    def set_planner_state(self, state: PlannerState, dump: bool = True):
         self.planner_state = state
-        self._auto_dump("set_planner_state", {"planner_state": state.value})
+        if dump:
+            self._auto_dump("set_planner_state", {"planner_state": state.value})
     
     def get_planner_state(self):
         return self.planner_state
@@ -207,14 +215,15 @@ class ContextManager:
             )
         self.pending_tool_call_channels.add(channel)
     
-    def obtain_id(self):
+    def obtain_id(self, dump: bool = True):
         """
         Obtain a new agent ID.
         """
         if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
             if not self.is_executing:
                 self.next_agent_id += 1
-            self._auto_dump("obtain_id", {"next_agent_id": self.next_agent_id})
+            if dump:
+                self._auto_dump("obtain_id", {"next_agent_id": self.next_agent_id})
         return self.next_agent_id
         
     def set_task_status(self, task_state: PlannedTasks, dump: bool = True):
@@ -295,12 +304,13 @@ class ContextManager:
         if dump:
             self._auto_dump("update_task_status", {})
 
-    def set_cancel_all_pending_plans(self):
+    def set_cancel_all_pending_plans(self, dump: bool = True):
         for task in self.task_state.tasks:
             for step in task.objective:
                 if step.status == "pending":
                     step.status = "cancelled"
-        self._auto_dump("set_cancel_all_pending_plans", {})
+        if dump:
+            self._auto_dump("set_cancel_all_pending_plans", {})
         
     def verify_index(self):
         task = self.task_state
@@ -378,7 +388,7 @@ class ContextManager:
         idx = self.task_state.next_step
         return idx.objective_index, idx.sub_objective_index
 
-    def add_milestone(self, milestone: str):
+    def add_milestone(self, milestone: str, dump: bool = True):
         """
         Add a milestone string to the current sub-objective's milestones list.
         """
@@ -387,9 +397,10 @@ class ContextManager:
             task = self.task_state.tasks[obj_idx]
             if 0 <= sub_idx < len(task.objective):
                 task.objective[sub_idx].milestones.append(milestone)
-                self._auto_dump("add_milestone", {"milestone": milestone})
+                if dump:
+                    self._auto_dump("add_milestone", {"milestone": milestone})
 
-    def submit_sub_objective(self, task_summary: str, task_status: Literal["pending", "completed", "failed", "cancelled"], files: Dict[str, ResourceReference]):
+    def submit_sub_objective(self, task_summary: str, task_status: Literal["pending", "completed", "failed", "cancelled"], files: Dict[str, ResourceReference], dump: bool = True):
         """
         Submit a sub-objective to the task list. which will check for status update for the whole task.
         """
@@ -405,16 +416,18 @@ class ContextManager:
                     cur_resources.add(cur_res.description)
                     cur_resources.add(cur_res.URI)
                 sub_objective.resource_reference.extend([v for v in files.values() if v.description not in cur_resources and v.URI not in cur_resources])
-                self.add_available_resources(files)
+                self.add_available_resources(files, dump=dump)
                 print(f"Submitted to {obj_idx + 1}.{sub_idx + 1} {sub_objective.sub_objective}")
                 self.verify_index()
             else:
                 print("Invalid sub-objective index.")
-                self._auto_dump("submit_sub_objective", {"error": "Invalid sub-objective index."})
+                if dump:
+                    self._auto_dump("submit_sub_objective", {"error": "Invalid sub-objective index."})
                 raise ValueError("Invalid sub-objective index.")
         else:
             print("Invalid objective index.")
-            self._auto_dump("submit_sub_objective", {"error": "Invalid sub-objective index."})
+            if dump:
+                self._auto_dump("submit_sub_objective", {"error": "Invalid sub-objective index."})
             raise ValueError("Invalid objective index.")
                 
                 
@@ -423,32 +436,36 @@ class ContextManager:
             self.task_state.is_mission_accomplished = all(t.finished for t in self.task_state.tasks)
         self.is_executing = False
         self.is_planned = False
-        self._auto_dump("submit_sub_objective", {"status": task_status})
+        if dump:
+            self._auto_dump("submit_sub_objective", {"status": task_status})
 
-    def set_next_step(self, objective_index: int, sub_objective_index: int):
+    def set_next_step(self, objective_index: int, sub_objective_index: int, dump: bool = True):
         """
         Update the next_step indices to point to the next task/sub-objective.
         """
         self.task_state.next_step.objective_index = objective_index
         self.task_state.next_step.sub_objective_index = sub_objective_index
-        self._auto_dump("set_next_step", {"objective_index": objective_index, "sub_objective_index": sub_objective_index})
+        if dump:
+            self._auto_dump("set_next_step", {"objective_index": objective_index, "sub_objective_index": sub_objective_index})
         
-    def update_overall_goal(self, overall_goal: str):
+    def update_overall_goal(self, overall_goal: str, dump: bool = True):
         """
         Update the overall goal.
         """
         self.overall_goal = overall_goal
         self.task_state.overall_goal = overall_goal
-        self._auto_dump("update_overall_goal", {"overall_goal": overall_goal})
+        if dump:
+            self._auto_dump("update_overall_goal", {"overall_goal": overall_goal})
 
-    def add_available_resources(self, resources: Dict[str, ResourceReference]):
+    def add_available_resources(self, resources: Dict[str, ResourceReference], dump: bool = True):
         """
         Add the available resources to the context manager.
         """
         self.available_resources.update(resources)
-        self._auto_dump("add_available_resources", {"keys": list(resources.keys())})
+        if dump:
+            self._auto_dump("add_available_resources", {"keys": list(resources.keys())})
 
-    def del_available_resources(self, resources: Dict[str, ResourceReference]):
+    def del_available_resources(self, resources: Dict[str, ResourceReference], dump: bool = True):
         """
         Delete the available resources from the context manager.
         """
@@ -456,9 +473,10 @@ class ContextManager:
         for k in pop_key:
             if k in self.available_resources.keys():
                 self.available_resources.pop(k)
-        self._auto_dump("del_available_resources", {"keys": list(resources.keys())})
+        if dump:
+            self._auto_dump("del_available_resources", {"keys": list(resources.keys())})
         
-    def add_dialogue(self, agent_id: int, channel: str | List[str], dialogue: List[Dict[str, Any]]):
+    def add_dialogue(self, agent_id: int, channel: str | List[str], dialogue: List[Dict[str, Any]], dump: bool = True):
         """
         Add a dialogue message to the dialogue history.
         If agent is inactive, raise **ValueError**.
@@ -472,14 +490,16 @@ class ContextManager:
         for c in channel:
             if c not in self.dialogue_history.keys():
                 self.dialogue_history[c] = []
-                self.add_active_subagent_channel(agent_id, c)
+                self.add_active_subagent_channel(agent_id, c, dump=dump)
                 print(f"Add channel: {c} to dialogue history.")
             self.dialogue_history[c].extend(dialogue)       
-        self._auto_dump("add_dialogue", {"channel": channel})
+        if dump:
+            self._auto_dump("add_dialogue", {"channel": channel})
 
-    def record_agent_factory_output(self, output: FactoryOutput):
+    def record_agent_factory_output(self, output: FactoryOutput, dump: bool = True):
         self.latest_agent_factory_output = output
-        self._auto_dump("record_agent_factory_output", {"role_setting": output.role_setting, "task_specification": output.task_specification})
+        if dump:
+            self._auto_dump("record_agent_factory_output", {"role_setting": output.role_setting, "task_specification": output.task_specification})
         
     def get_formatted_available_resources(self) -> str:
         """
@@ -566,7 +586,7 @@ class ContextManager:
         """
         return self.task_state.is_mission_accomplished
     
-    def add_active_subagent(self, subagent_id: int, default_channel: str):
+    def add_active_subagent(self, subagent_id: int, default_channel: str, dump: bool = True):
         """
         Add an active subagent and its default channel.
         """
@@ -574,40 +594,44 @@ class ContextManager:
             self.active_subagents[subagent_id] = set()
             print(f"Add subagent {subagent_id} to active subagents.")
         self.active_subagents[subagent_id].add(default_channel)
-        self._auto_dump("add_active_subagent", {"subagent_id": subagent_id, "channel": default_channel})
+        if dump:
+            self._auto_dump("add_active_subagent", {"subagent_id": subagent_id, "channel": default_channel})
         
-    def add_active_subagent_channel(self, subagent_id: int, channel: str):
+    def add_active_subagent_channel(self, subagent_id: int, channel: str, dump: bool = True):
         """
         Add an active channel for the subagent.
         """
         if subagent_id in self.active_subagents:
             if channel not in self.active_subagents[subagent_id]:
                 self.active_subagents[subagent_id].add(channel)
-                self._auto_dump("add_active_subagent_channel", {"subagent_id": subagent_id, "channel": channel})
+                if dump:
+                    self._auto_dump("add_active_subagent_channel", {"subagent_id": subagent_id, "channel": channel})
         else:
             print(f"Subagent {subagent_id} not found in active subagents.")
             raise ValueError(f"Subagent {subagent_id} not found in active subagents.")
 
-    def del_active_subagent_channel(self, subagent_id: int, channel: str):
+    def del_active_subagent_channel(self, subagent_id: int, channel: str, dump: bool = True):
         """
         Delete an active channel for the subagent.
         """
         if subagent_id in self.active_subagents:
             if channel in self.active_subagents[subagent_id]:
                 self.active_subagents[subagent_id].remove(channel)
-                self._auto_dump("del_active_subagent_channel", {"subagent_id": subagent_id, "channel": channel})
+                if dump:
+                    self._auto_dump("del_active_subagent_channel", {"subagent_id": subagent_id, "channel": channel})
             else:
                 print(f"Channel {channel} not found in active channels of subagent {subagent_id}.")
         else:
             print(f"Subagent {subagent_id} not found in active subagents.")
 
-    def del_active_subagent(self, subagent_id: int):
+    def del_active_subagent(self, subagent_id: int, dump: bool = True):
         """
         Delete an active subagent and its all channels.
         """
         if subagent_id in self.active_subagents:
             self.active_subagents[subagent_id].clear()
-            self._auto_dump("del_active_subagent", {"subagent_id": subagent_id})
+            if dump:
+                self._auto_dump("del_active_subagent", {"subagent_id": subagent_id})
         else:
             print(f"Subagent {subagent_id} not found in active subagents.")
         
@@ -636,28 +660,31 @@ class ContextManager:
         if dump:
             self._auto_dump("refresh_active_subagent", {"active_subagents": list(self.active_subagents.keys())})
 
-    def apply_planned_tasks(self, resp: PlannedTasks | Replan | ContinueNextStep):
+    def apply_planned_tasks(self, resp: PlannedTasks | Replan | ContinueNextStep, dump: bool = True):
         """
         Set latest plan and active agents to the context manager.
         """
         self.update_task_status(resp, dump=False)
         self.refresh_active_subagent(self.task_state, dump=False)
-        self._auto_dump("apply_planned_tasks", {})
+        if dump:
+            self._auto_dump("apply_planned_tasks", {})
         
-    def clear_active_subagents(self):
+    def clear_active_subagents(self, dump: bool = True):
         """
         Clear all active subagents and their channels.
         """
         self.active_subagents.clear()
-        self._auto_dump("clear_active_subagents", {})
+        if dump:
+            self._auto_dump("clear_active_subagents", {})
         
-    def set_current_subtask_agent_id(self,agent_id: int):
+    def set_current_subtask_agent_id(self,agent_id: int, dump: bool = True):
         """
         Set the agent_id for the current sub-objective.
         """
         sub_objective_index, sub_objective_step_index = self._get_current_indices()
         self.task_state.tasks[sub_objective_index].objective[sub_objective_step_index].agent_id = agent_id
-        self._auto_dump("set_current_subtask_agent_id", {"agent_id": agent_id})
+        if dump:
+            self._auto_dump("set_current_subtask_agent_id", {"agent_id": agent_id})
     
     def dump(self, path: Optional[str] = None, reason: Optional[str] = None, params: Optional[Dict[str, Any]] = None):
         """

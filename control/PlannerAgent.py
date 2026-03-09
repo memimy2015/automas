@@ -3,7 +3,7 @@ from miscellaneous.cozeloop_preprocess import planner_process_output
 from typing import List
 from datetime import datetime
 from execution.agent.prompt import PROJECT_DIR
-from control.context_manager import ContextManager, PlannerState
+from control.context_manager import ContextManager
 from resources.tools.persistent_shell import PersistentShell
 from resources.tools.skill_tool import get_skill_list
 import json
@@ -11,7 +11,7 @@ from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call, llm_call_json_schema
 from execution.agent.prompt import render
 from typing import Optional
-from llm.json_schemas import Subtask, SubtaskSteps, PlannedTasks
+from llm.json_schemas import Subtask, SubtaskSteps, PlannedTasks, PlannerState
 from .notifier import Notifier
 import os
 from miscellaneous.observe import observe
@@ -744,13 +744,13 @@ class PlannerAgent:
             self.agent_id = agent_id
             self.identity = channel.rsplit("_main", 1)[0]
             if channel not in self.context_manager.dialogue_history:
-                self.context_manager.add_active_subagent(self.agent_id, channel)
+                self.context_manager.add_active_subagent(self.agent_id, channel, dump=False)
         else:
-            self.agent_id = self.context_manager.obtain_id()
+            self.agent_id = self.context_manager.obtain_id(dump=False)
             self.identity = f"PlannerAgent_{self.agent_id}"
-            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Planner")
+            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Planner", dump=False)
 
-    def append_message(self, message: dict, channel: str | List[str] = None):
+    def append_message(self, message: dict, channel: str | List[str] = None, dump: bool = True):
         """
         Append a message to the message list of the channel and current agent message list.
         Args:
@@ -760,7 +760,7 @@ class PlannerAgent:
         if channel is None:
             channel = self.identity + "_main"
         # self.messages.append(message)
-        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}])
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}], dump=dump)
 
     def set_channel_msg(self, channel: str = None):
         """
@@ -787,9 +787,9 @@ class PlannerAgent:
             QA = self.context_manager.get_active_qa("planner")
         else:
             QA = []
-        self.context_manager.set_active_qa("planner", QA)
+        self.context_manager.set_active_qa("planner", QA, dump=False)
         print("=====PlannerAgent Started=====")
-        self.context_manager.set_is_planned(False)
+        self.context_manager.set_is_planned(False, dump=True)
         tools = []
         for tool_name in self.tool_name_list:
             tool = self.tool_executer.get_tool(tool_name)
@@ -807,14 +807,15 @@ class PlannerAgent:
             
             print(f"判断下一步为{resp.planner_state} \n 原因：{resp.reason}")
             
-            self.context_manager.set_planner_state(PlannerState(resp.planner_state)) # state 可能在 continue/replan/finished中选择
+            self.context_manager.set_planner_state(PlannerState(resp.planner_state), dump=True) # state 可能在 continue/replan/finished中选择
             if resp.planner_state == "finished":
-                self.context_manager.set_cancel_all_pending_plans()
-                self.context_manager.set_is_planned(True)
+                self.context_manager.set_cancel_all_pending_plans(dump=False)
                 self.context_manager.task_state.is_mission_accomplished = True
+                self.context_manager.set_is_planned(True, dump=True)
                 return {
                     "is_mission_accomplished": True,
                     "formatted_plan": self.context_manager.get_formatted_plan(self.context_manager.task_state),
+                    "action": resp,
                     "total_usage": usage,
                     "QA": []
                 }
@@ -830,12 +831,12 @@ class PlannerAgent:
                 if finish_reason != "tool_calls":
                     resp = resp.parsed
                     print(resp.model_dump_json(indent=2))
-                    self.context_manager.apply_planned_tasks(resp)
+                    self.context_manager.apply_planned_tasks(resp, dump=True)
                     break
                 tool_name = resp.tool_calls[0].function.name
                 tool_args = json.loads(resp.tool_calls[0].function.arguments)
                 if tool_name != "call_user":
-                    self.append_message(resp.model_dump(), channel=self.identity + "_main")
+                    self.append_message(resp.model_dump(), channel=self.identity + "_main", dump=True)
                 if tool_name == "call_user":
                     tool_args["invoker_agent_id"] = self.agent_id
                     tool_args["in_channel"] = self.identity + "_main"
@@ -843,24 +844,26 @@ class PlannerAgent:
                 tool_result = self.tool_executer.call(tool_name, tool_args)
                 tool_call_id = resp.tool_calls[0].id
                 if tool_name != "call_user":
-                    self.append_message({"role": "tool", "content": tool_result, "tool_call_id": tool_call_id, "tool_name": tool_name}, channel=self.identity + "_main")
+                    self.append_message({"role": "tool", "content": tool_result, "tool_call_id": tool_call_id, "tool_name": tool_name}, channel=self.identity + "_main", dump=False)
                 if tool_name == "call_user":
                     QA.append({"planner": tool_args["query"], "user": tool_result})
-                    self.context_manager.set_active_qa("planner", QA)
+                    self.context_manager.set_active_qa("planner", QA, dump=True)
             is_mission_accomplished = self.context_manager.task_state.is_mission_accomplished
             print("=====PlannerAgent Finished=====")
-            self.context_manager.set_planner_state(PlannerState.FINISHED if is_mission_accomplished else PlannerState.PENDING)
-            self.context_manager.set_is_planned(True)
+            self.context_manager.set_planner_state(PlannerState.FINISHED if is_mission_accomplished else PlannerState.PENDING, dump=False)
+            self.context_manager.set_is_planned(True, dump=True)
             qa_snapshot = list(QA)
             return {
                 "is_mission_accomplished": is_mission_accomplished,
                 "formatted_plan": self.context_manager.get_formatted_plan(self.context_manager.task_state),
+                "action": resp,
                 "total_usage": usage,
                 "QA": qa_snapshot
             }
         finally:
-            self.context_manager.clear_active_qa("planner")
+            self.context_manager.clear_active_qa("planner", dump=False)
             QA.clear()
+            self.context_manager._auto_dump("planner_exit", {"agent_id": self.agent_id})
         
     
     # def _prepare_context(self, need_replan: bool = False):

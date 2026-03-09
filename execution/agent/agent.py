@@ -60,7 +60,7 @@ class Agent:
             if self.agent_id >= self.context_manager.next_agent_id:
                 self.context_manager.next_agent_id = self.agent_id
         else:
-            self.agent_id = self.context_manager.obtain_id()
+            self.agent_id = self.context_manager.obtain_id(dump=False)
         self.log_name = f"{datetime.now().strftime('%Y-%m-%d')}_{self.agent_id}.jsonl"
         prompt = render(**instruction)
         print(f"agent system prompt: {prompt}")
@@ -76,20 +76,20 @@ class Agent:
         # 子代理身份标识
         self.identity = f"{self.task_info['subtask_name']}_subagent_{self.agent_id}"
         # 先注册一下 Agent id 以及默认信道
-        self.context_manager.add_active_subagent(subagent_id=self.agent_id, default_channel=self.identity + "_main")
+        self.context_manager.add_active_subagent(subagent_id=self.agent_id, default_channel=self.identity + "_main", dump=False)
         # 设置子任务的agent_id
-        self.context_manager.set_current_subtask_agent_id(self.agent_id)
-        self.context_manager.set_latest_agent(self.agent_id)
+        self.context_manager.set_current_subtask_agent_id(self.agent_id, dump=False)
+        self.context_manager.set_latest_agent(self.agent_id, dump=False)
         # 不存在的Agent可以记录一下系统提示词
         if not is_existing_agent:
-            self.append_message({"role": "system", "content": prompt}, {}, channel=self.identity + "_main")
+            self.append_message({"role": "system", "content": prompt}, {}, channel=self.identity + "_main", dump=False)
 
 
     def message_logger(self, message: dict):
         with open(os.path.join(Agent_LOG_DIR, self.log_name), "a") as f:
             f.write(json.dumps(message, ensure_ascii=False) + "\n")
 
-    def append_message(self, message: dict, usage: dict, channel: str = None):
+    def append_message(self, message: dict, usage: dict, channel: str = None, dump: bool = True):
         """
         Append a message to the message list of the channel and current agent message list.
         Args:
@@ -104,7 +104,7 @@ class Agent:
         if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
             self.message_logger(message | self.task_info | {"time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | usage)
         # 记录Agent消息到上下文管理器
-        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}])
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()}], dump=dump)
         
     @observe(
         name="agent",
@@ -117,9 +117,9 @@ class Agent:
             QA = self.context_manager.get_active_qa("agent")
         else:
             QA = []
-        self.context_manager.set_active_qa("agent", QA)
+        self.context_manager.set_active_qa("agent", QA, dump=True)
         if query !=  "":
-            self.append_message({"role": "user", "content": query}, {}, channel=self.identity + "_main")
+            self.append_message({"role": "user", "content": query}, {}, channel=self.identity + "_main", dump=False)
         tools = []
         for tool_name in self.tool_name_list:
             tools.append(self.tool_executer.get_tool(tool_name))    
@@ -132,8 +132,8 @@ class Agent:
                     return resp_msg.content, usage, "llm_error", self.tool_usage, qa_snapshot
                 if finish_reason != "tool_calls":
                     content = resp_msg.content
-                    self.append_message({"role": "assistant", "content": content}, usage.model_dump(), channel=self.identity + "_main")
-                    self.append_message({"role": "user", "content": DEFAULT_SUBMIT_PROMPT}, usage.model_dump(), channel=self.identity + "_main")
+                    self.append_message({"role": "assistant", "content": content}, usage.model_dump(), channel=self.identity + "_main", dump=True)
+                    self.append_message({"role": "user", "content": DEFAULT_SUBMIT_PROMPT}, usage.model_dump(), channel=self.identity + "_main", dump=True)
                     try:
                         self._prepare_context()
                         finish_reason, resp_msg, submit_usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Submit")
@@ -151,16 +151,16 @@ class Agent:
                         formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)   
                         self.append_message({"role": "user", "content": f"现在处理的子目标概况：\n {formatted_subtask_step} \n 执行概要为：{content}"}, usage.model_dump(), channel=self.identity + "_summary")
                         
-                        self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources)
+                        self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources, dump=True)
                         qa_snapshot = list(QA)
                         return content, usage, "success", self.tool_usage, qa_snapshot
                     except Exception as e:
                         print(f"submit {self.messages[-1]} \n error: {e}")
                         error_summary = f"Error when submitting task execution results, error message: {e}"
-                        self.context_manager.submit_sub_objective(error_summary, "pending", {})
+                        self.context_manager.submit_sub_objective(error_summary, "pending", {}, dump=True)
                         qa_snapshot = list(QA)
                         return content, usage, str(e), self.tool_usage, qa_snapshot
-                self.append_message(resp_msg.model_dump(), usage.model_dump(), channel=self.identity + "_main")
+                self.append_message(resp_msg.model_dump(), usage.model_dump(), channel=self.identity + "_main", dump=True)
                 tool_call = resp_msg.tool_calls[0]
                 tool_name = tool_call.function.name
                 tool_args = json.loads(tool_call.function.arguments)
@@ -168,17 +168,18 @@ class Agent:
                     tool_args["invoker_agent_id"] = self.agent_id
                     tool_args["in_channel"] = self.identity + "_main"
                     tool_args["out_channel"] = "user"
-                self.context_manager.record_tool_usage(self.agent_id, tool_name)
+                self.context_manager.record_tool_usage(self.agent_id, tool_name, dump=False)
                 tool_result = self.tool_executer.call(tool_name, tool_args)
                 self.append_message(
-                    {"role": "tool", "content": tool_result, "tool_call_id": tool_call.id, "tool_name": tool_name}, usage.model_dump(), channel=self.identity + "_main"
+                    {"role": "tool", "content": tool_result, "tool_call_id": tool_call.id, "tool_name": tool_name}, usage.model_dump(), channel=self.identity + "_main", dump=False
                 )
                 if tool_name == "call_user":
                     QA.append({"agent": tool_args["query"], "user": tool_result})
-                    self.context_manager.set_active_qa("agent", QA)
+                    self.context_manager.set_active_qa("agent", QA, dump=False)
         finally:
-            self.context_manager.clear_active_qa("agent")
+            self.context_manager.clear_active_qa("agent", dump=False)
             QA.clear()
+            self.context_manager._auto_dump("agent_exit", {"agent_id": self.agent_id})
     
     def _prepare_context(self):
         self.context_manager.handle_pending_tool_call(self.tool_executer, self.agent_id, self.identity + "_main")

@@ -54,14 +54,14 @@ class ClaimerAgent:
             self.agent_id = agent_id
             self.identity = channel.rsplit("_main", 1)[0]
             if channel not in self.context_manager.dialogue_history:
-                self.context_manager.add_active_subagent(self.agent_id, channel)
+                self.context_manager.add_active_subagent(self.agent_id, channel, dump=False)
         else:
-            self.agent_id = self.context_manager.obtain_id()
+            self.agent_id = self.context_manager.obtain_id(dump=False)
             self.identity = f"Claimer_{self.agent_id}"
-            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Claimer")
-            self.append_message({"role": "system", "content": prompt}, channel=self.identity + "_main")
+            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Claimer", dump=False)
+            self.append_message({"role": "system", "content": prompt}, channel=self.identity + "_main", dump=False)
         
-    def append_message(self, message: dict, channel: str | List[str] = None, usage: dict = None):
+    def append_message(self, message: dict, channel: str | List[str] = None, usage: dict = None, dump: bool = True):
         """
         Append a message to the message list of the channel and current agent message list.
         Args:
@@ -71,7 +71,7 @@ class ClaimerAgent:
         if channel is None:
             channel = self.identity + "_main"
         # self.messages.append(message)
-        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}])
+        self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}], dump=dump)
 
     @observe(
         name="claimer",
@@ -83,13 +83,13 @@ class ClaimerAgent:
             QA = self.context_manager.get_active_qa("claimer")
         else:
             QA = []
-        self.context_manager.set_active_qa("claimer", QA)
+        self.context_manager.set_active_qa("claimer", QA, dump=False)
         print("=====ClaimerAgent Started=====")
         try:
             if self.context_manager.get_available_resources():
                 formatted_available_resources = self.context_manager.get_formatted_available_resources()
-                self.append_message({"role": "user", "content": f"当前可用资源：\n {formatted_available_resources}"}, channel=[self.identity + "_main", "user"]) # 这里可能后续需要改，会把所有资源加入消息历史，可能会很长，至少不应该发到user信道被planner接受
-            self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"])
+                self.append_message({"role": "user", "content": f"当前可用资源：\n {formatted_available_resources}"}, channel=[self.identity + "_main", "user"], dump=False) # 这里可能后续需要改，会把所有资源加入消息历史，可能会很长，至少不应该发到user信道被planner接受
+            self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"], dump=True)
             self._prepare_context()
             finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
             if finish_reason == "error":
@@ -97,16 +97,18 @@ class ClaimerAgent:
             resp = resp.parsed
             print(f'Finish Reason: {finish_reason}')
             while resp.need_more_info:
+                first_dump_after_llm = True
                 i = 0
                 for model_query in resp.contents:
                     i += 1
                     model_query = model_query.query
                     print(f'Model query: {model_query} | ({i} / {len(resp.contents)})')
                     user_resp = self.notifier.call_user(model_query, invoker_agent_id=self.agent_id, in_channel=self.identity + "_main", out_channel="user")
-                    self.append_message({"role": "assistant", "content": model_query}, channel=self.identity + "_main")
-                    self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main")
+                    self.append_message({"role": "assistant", "content": model_query}, channel=self.identity + "_main", dump=first_dump_after_llm)
+                    first_dump_after_llm = False
+                    self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main", dump=(i == len(resp.contents)))
                     QA.append({"claimer": model_query, "user": user_resp})
-                    self.context_manager.set_active_qa("claimer", QA)
+                    self.context_manager.set_active_qa("claimer", QA, dump=False)
                 self._prepare_context()
                 finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
                 if finish_reason == "error":
@@ -114,13 +116,13 @@ class ClaimerAgent:
                 resp = resp.parsed
             print(f"Source reference: \n {resp.resource_reference}")
             print(f"Refined objective: \n {resp.refined_objective}")
-            self.append_message({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"}, channel=[self.identity + "_main", "user"])
-            self.context_manager.update_overall_goal(resp.refined_objective)
             for resource_ref in resp.resource_reference:
-                self.append_message({"role": "user", "content": f"可用资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"}, channel=[self.identity + "_main", "user"])
-                self.context_manager.add_available_resources({resource_ref.description: resource_ref})
+                self.append_message({"role": "user", "content": f"可用资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"}, channel=[self.identity + "_main", "user"], dump=False)
+                self.context_manager.add_available_resources({resource_ref.description: resource_ref}, dump=False)
             print("=====ClaimerAgent Finished=====")
             self.context_manager.is_clarified = True
+            self.append_message({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"}, channel=[self.identity + "_main", "user"], dump=False)
+            self.context_manager.update_overall_goal(resp.refined_objective, dump=True)
             qa_snapshot = list(QA)
             return {
                 "Refined_objective": resp.refined_objective,
@@ -129,8 +131,9 @@ class ClaimerAgent:
                 "QA": qa_snapshot
             }
         finally:
-            self.context_manager.clear_active_qa("claimer")
+            self.context_manager.clear_active_qa("claimer", dump=False)
             QA.clear()
+            self.context_manager._auto_dump("claimer_exit", {"agent_id": self.agent_id})
         
     def _prepare_context(self):
         self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=[self.identity + "_main"], formatted=False)

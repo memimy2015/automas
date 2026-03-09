@@ -1,3 +1,4 @@
+from operator import index
 from webbrowser import get
 from llm.json_schemas import FactoryOutput
 from llm.llm import llm_call_json_schema
@@ -11,6 +12,8 @@ from llm.llm import llm_call
 from typing import Dict, Any
 from miscellaneous.cozeloop_preprocess import agent_factory_process_output
 from miscellaneous.observe import observe
+import os
+
 
 DEFAULT_INSTRUCTION = """
 # Role
@@ -55,33 +58,48 @@ class AgentFactory():
         process_outputs=agent_factory_process_output,
     )
     def run(self, tool_name_list: list = None) -> Agent:
-        print("AgentFactory Creating New Agent")
-        self.current_subtask_index, self.current_subtask_step_index = self.context_manager._get_current_indices()
-        if tool_name_list is None:
-            tool_name_list = self.default_tool_name_list
-        # prepare_context for factory
-        current_subtask = self.context_manager.get_subtask(self.current_subtask_index)
-        current_subtask_step = self.context_manager.get_subtask_step(self.current_subtask_index, self.current_subtask_step_index)
-        formatted_subtask = self.context_manager.get_formatted_subtask(current_subtask, self.current_subtask_index + 1)
-        formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, self.current_subtask_index + 1, self.current_subtask_step_index + 1)
-        self.messages[0] = {"role": "system", "content": DEFAULT_INSTRUCTION.format(formatted_subtask, formatted_subtask_step)}
-        self.messages[1] = {"role": "user", "content": "Now give your suggested role and task specification for prompt of sub-objective."}
-        
-        finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="PromptEngineer")
-        if finish_reason == "error":
-            raise RuntimeError(resp.content)
-        resp = resp.parsed
-        self.context_manager.record_agent_factory_output(resp)
-        instruction = {
-            "role_setting": resp.role_setting,
-            "task_specification": resp.task_specification,
-            "skills": get_skill_list(),
-            # "task_background": formatted_subtask,
-            "task_background": "None",
-            "sub_objective": formatted_subtask_step,
-        }
-        print("AgentFactory Created New Agent")
-        return {
-            "agent": self.create_agent(instruction, tool_name_list),
-            "instruction": instruction,
-        }
+        try:
+            print("AgentFactory Creating New Agent")
+            self.current_subtask_index, self.current_subtask_step_index = self.context_manager._get_current_indices()
+            if tool_name_list is None:
+                tool_name_list = self.default_tool_name_list
+            current_subtask = self.context_manager.get_subtask(self.current_subtask_index)
+            current_subtask_step = self.context_manager.get_subtask_step(self.current_subtask_index, self.current_subtask_step_index)
+            formatted_subtask = self.context_manager.get_formatted_subtask(current_subtask, self.current_subtask_index + 1)
+            formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, self.current_subtask_index + 1, self.current_subtask_step_index + 1)
+            self.messages[0] = {"role": "system", "content": DEFAULT_INSTRUCTION.format(formatted_subtask, formatted_subtask_step)}
+            self.messages[1] = {"role": "user", "content": "Now give your suggested role and task specification for prompt of sub-objective."}
+            
+            
+            did_llm_call = True
+            if os.getenv("IS_DEBUG_ENABLED", "1") == "1" and self.context_manager.is_executing:
+                resp = self.context_manager.latest_agent_factory_output
+                print(f"AgentFactory loaded last output: {resp.model_dump_json(indent=2)}")
+                did_llm_call = False
+            else:
+                finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="PromptEngineer")
+                if finish_reason == "error":
+                    raise RuntimeError(resp.content)
+                resp = resp.parsed
+                print(f"AgentFactory output: {resp.model_dump_json(indent=2)}")
+            instruction = {
+                "role_setting": resp.role_setting,
+                "task_specification": resp.task_specification,
+                "skills": get_skill_list(),
+                "task_background": "None",
+                "sub_objective": formatted_subtask_step,
+            }
+            self.context_manager.record_agent_factory_output(resp, dump=did_llm_call)
+            print("AgentFactory Created New Agent")
+            return {
+                "agent": self.create_agent(instruction, tool_name_list),
+                "instruction": instruction,
+            }
+        finally:
+            self.context_manager._auto_dump(
+                "agent_factory_exit",
+                {
+                    "current_subtask_index": getattr(self, "current_subtask_index", None),
+                    "current_subtask_step_index": getattr(self, "current_subtask_step_index", None),
+                },
+            )

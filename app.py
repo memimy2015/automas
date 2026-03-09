@@ -320,6 +320,7 @@ def main():
     go()
 
 if __name__ == "__main__":
+
     try:
         main()
         if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":

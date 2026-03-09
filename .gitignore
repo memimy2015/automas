@@ -181,6 +181,8 @@ essay/
 # whole_cleanup.sh
 test.py
 test*.py
+pp_test.py
+bu_test.py
 
 # local debug
 .dbg/

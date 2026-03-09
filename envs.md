@@ -6,6 +6,12 @@
   - 影响范围：`llm/llm.py` 的 LLM 调用初始化  
   - 备注：未设置会导致 LLM 调用失败
   - 获取方式：[火山引擎 Ark Runtime](https://www.volcengine.com/docs/82379/1361424?lang=zh)
+  
+- ARK_BASE_URL  
+  - 作用：火山引擎 Ark Runtime 的 Base URL  
+  - 影响范围：`llm/llm.py` 的 LLM 调用初始化  
+  - 备注：未设置会导致 LLM 调用失败
+  - 默认值：`https://ark.cn-beijing.volces.com/api/v3`
 
 - MODEL  
   - 作用：Ark 推理接入点 ID, model_id 或 endpoint_id
