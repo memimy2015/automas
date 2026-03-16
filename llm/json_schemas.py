@@ -8,6 +8,11 @@ from enum import Enum
 class ProactiveQuery(BaseModel):
     query: str = Field(description="向用户提出询问补充信息的问题", default="")
 
+class ResourceType(Enum):
+    from_user = "from_user"
+    from_memorybase = "from_memorybase"
+    from_agent = "from_agent"
+
 class ResourceReference(BaseModel):
     description: str = Field(..., description="资源的描述", required=True)
     URI: str = Field(..., description="资源的URI", required=True)

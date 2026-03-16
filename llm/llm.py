@@ -30,7 +30,7 @@ model = os.environ.get("MODEL")
 # )
 
 client = OpenAI(
-    base_url=os.environ.get("ARK_BASE_URL"),    
+    base_url=os.environ.get("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3"),    
     api_key=api_key, 
 )
 

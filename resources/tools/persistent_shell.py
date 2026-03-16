@@ -104,12 +104,13 @@ class PersistentShell:
             return True
         return False
 
-    def execute_command(self, command, timeout=180.0):
+    def execute_command(self, command, timeout=300.0):
         """
         Executes a command in the persistent terminal.
         Returns (success, output).
         
-        timeout: Total time in seconds to wait for command completion.
+        timeout: Idle timeout in seconds. If no output is received within this period,
+                 the command is considered stuck and will be interrupted.
         """
         if self._is_dangerous_command(command):
             self.logger.error(f"Blocked dangerous command: {command}")
@@ -151,10 +152,10 @@ class PersistentShell:
         start_time = time.time()
         
         while True:
-            # Check for timeout
+            # Check for idle timeout
             if time.time() - start_time > timeout:
-                self.logger.warning(f"Command execution timed out after {timeout}s: {command}")
-                print(f"Command execution timed out after {timeout}s")
+                self.logger.warning(f"Command execution idle-timed out after {timeout}s (no output): {command}")
+                print(f"Command execution idle-timed out after {timeout}s (no output)")
                 
                 # Attempt 1: Send Ctrl+C (SIGINT)
                 try:
@@ -198,13 +199,14 @@ class PersistentShell:
                      pass
 
                 result_output = "".join(output_buffer)
-                self.logger.error(f"execute status: False\nstdout:{result_output}\n[Error: Command timed out after {timeout} seconds. Sent SIGINT to interrupt.]")
-                return f"execute status: False\nstdout:{result_output}\n[Error: Command timed out after {timeout} seconds. Sent SIGINT to interrupt.]"
+                self.logger.error(f"execute status: False\nstdout:{result_output}\n[Error: Command idle-timed out after {timeout} seconds without output. Sent SIGINT to interrupt.]")
+                return f"execute status: False\nstdout:{result_output}\n[Error: Command idle-timed out after {timeout} seconds without output. Sent SIGINT to interrupt.]"
 
             try:
                 # Read with short timeout to allow checking total time
                 char = self.output_queue.get(timeout=0.1)
                 output_buffer.append(char)
+                start_time = time.time()
                 
                 # Optimization: check sentinel only if char matches end of sentinel
                 if char == sentinel[-1]:

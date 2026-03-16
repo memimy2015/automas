@@ -376,6 +376,7 @@ REPLAN_SCHEDULE = """\
 # Replan schedule
 First, review all completed tasks and subtasks. 
 If a completed task or subtask is not affected by the current changes, keep it unchanged in the next plan, especially the agent_id of a sub-objective.
+If a sub-objective has agent_id but its status is not "completed", never keep it in the next plan. If you need to execute it again, you must remove its previous agent_id, and treat it as a new sub-objective, that means its agent_id is None.
 Then, try to replan according to information in previous chat history.
 
 # Rules
@@ -383,6 +384,8 @@ Then, try to replan according to information in previous chat history.
 - You don't need to assign new agent_id for now. If you find any completed sub-objectives that are reusable for replanning, you only need to reuse their them and their agent_ids as well.
 - If user requests to continue, then do not ask for more information.
 - Do not just ask for permission to continue or ask user to execute tasks!!!
+- If you need to execute a sub-objective again, you must remove its previous agent_id, and treat it as a new sub-objective, that means its agent_id is None and status is pending.
+- Never keep sub-objective with status failed or cancelled in the next plan.
 
 # Special tool use rule
 
@@ -924,7 +927,7 @@ class PlannerAgent:
             raise RuntimeError(f"planner state must be INIT, CONTINUE, REPLAN, or PENDING, now {self.context_manager.get_planner_state().value}")
         self.messages[2] = {
             "role": "user", "content": msg
-        }   
+        }
         
     def _schema_selector(self):
         """

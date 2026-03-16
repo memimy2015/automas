@@ -173,6 +173,7 @@ agent_log/
 
 # dump file
 dump/
+tmp_dump*.json
 
 # essay
 essay/
