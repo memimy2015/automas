@@ -375,17 +375,19 @@ JSON format
 REPLAN_SCHEDULE = """\
 # Replan schedule
 First, review all completed tasks and subtasks. 
-If a completed task or subtask is not affected by the current changes, keep it unchanged in the next plan, especially the agent_id of a sub-objective.
-If a sub-objective has agent_id but its status is not "completed", never keep it in the next plan. If you need to execute it again, you must remove its previous agent_id, and treat it as a new sub-objective, that means its agent_id is None.
-Then, try to replan according to information in previous chat history.
+If a completed task or other pending subtasks that are not affected by the current changes, keep it unchanged in the next plan, especially the agent_id of a sub-objective.
+If a sub-objective has agent_id but its status is not "completed", never keep it directly in the next plan. If you need to execute it again, you must remove its previous agent_id, and treat it as a new sub-objective, that means its agent_id is None.
+If a cancelled or failed sub-objective has been told that it is unnecessary(By user, user might give this kind of information when chatting with that agent, you can distinguish it by agent id), then just simply remove it from the next plan.
+Then, try to replan according to information in previous context.
 
 # Rules
 - You are not allowed to execute tasks! You can only dispatch subtasks to sub-agents.
 - You don't need to assign new agent_id for now. If you find any completed sub-objectives that are reusable for replanning, you only need to reuse their them and their agent_ids as well.
 - If user requests to continue, then do not ask for more information.
 - Do not just ask for permission to continue or ask user to execute tasks!!!
-- If you need to execute a sub-objective again, you must remove its previous agent_id, and treat it as a new sub-objective, that means its agent_id is None and status is pending.
+- If you need to put a previously failed or cancelled sub-objective into your new plan, you must remove its previous agent_id, and treat it as a new sub-objective, that means its agent_id is None and status is pending.
 - Never keep sub-objective with status failed or cancelled in the next plan.
+- Never check the content of file, only check if the file exists.
 
 # Special tool use rule
 
@@ -400,7 +402,7 @@ Purpose:
 1. check if a file or folder exists
 2. check system environment if it is essential for the task
 
-- Do not use command tool to execute scripts
+- You must not use command tool to execute scripts.
 
 Here are some available resources:
 {ResourceList}
@@ -416,6 +418,7 @@ Then you need to check resource list and find the resources that help to accompl
 - You dont need to assign agent_id at this time.
 - If user requests to continue, then do not ask for more information.
 - Do not just ask for permission to continue or ask user to execute tasks!!!
+- Never check the content of file, only check if the file exists.
 
 # Special tool use rule
 
@@ -430,7 +433,7 @@ Purpose:
 1. check if a file or folder exists
 2. check system environment if it is essential for the task
 
-- Do not use command tool to execute scripts
+- You must not use command tool to execute scripts
 
 resource list:
 {ResourceList}
@@ -446,6 +449,7 @@ You can select helpful resources reference for each sub-objective, if available.
 - You dont need to assign agent_id at this time.
 - If user requests to continue, then do not ask for more information.
 - Do not just ask for permission to continue or ask user to execute tasks!!!
+- Never check the content of file, only check if the file exists.
 
 # Special tool use rule
 
@@ -460,7 +464,7 @@ Purpose:
 1. check if a file or folder exists
 2. check system environment if it is essential for the task
 
-- Do not use command tool to execute scripts
+- You must not use command tool to execute scripts
 
 resource list:
 {ResourceList}
@@ -470,8 +474,9 @@ PENDING_SCHEDULE = """
 You are not allowed to execute tasks! You can only dispatch subtasks to sub-agents.
 You must determine what to do next.
 If current plan is fine, then set `planner_state` to continue.
-If current plan can be refined or has got some trouble, then set `planner_state` to ask for replan.
-If all task is finised well or user strongly requests to cancel or finish the mission, then set `planner_state` to finished.
+If current plan can be refined, then set `planner_state` to ask for replan.
+If current plan has got some trouble, such as a sub-objective failed or cancelled, or the milestone of a sub-objective shows that it has got some trouble and it cannot achieve its objective, then set `planner_state` to ask for replan.
+If all task is finised well or user strongly requests to cancel or finish current task, then set `planner_state` to finished.
 
 You also need to give your reason for the decision.
 """

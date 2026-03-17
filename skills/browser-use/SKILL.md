@@ -1,6 +1,6 @@
 ---
 name: browser-use
-description: Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, or extract information from web pages.
+description: Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, or extract information from web pages. It also provide a powerful script to solve complex and multi-step tasks, use that script when you encounter troubles.
 allowed-tools: Bash(browser-use:*), Bash(python:*)
 ---
 
@@ -215,11 +215,17 @@ The Python session maintains state across commands. The `browser` object provide
 - `browser.back()` - Go back in history
 - `browser.wait(seconds)` - Sleep/pause execution
 
-### Agentic Tasks (via `agentic_browser_use.py`)
+### Agentic Tasks Script (via `agentic_browser_use.py`)
 
 This is the **ultimate weapon** for browser task, if you cannot complete the task by browser-use CLI, don't give up, **always try to use this tool**.
 
-For autonomous, multi-step browser tasks, use the local wrapper script:
+Use it when:
+- The task is complex and requires multiple steps.
+- The task involves interacting with dynamic elements on the page.
+- The task can be solve more efficiently by vision.
+- Need to fill in a form with dynamic data.
+- Meet problems when extracting data from a web page.
+- You has met troubles
 
 #### usage
 ```bash
