@@ -215,6 +215,32 @@ The Python session maintains state across commands. The `browser` object provide
 - `browser.back()` - Go back in history
 - `browser.wait(seconds)` - Sleep/pause execution
 
+<!-- ### Agentic Tasks Script (via `agentic_browser_use.py`)
+
+This is the **ultimate weapon** for browser task, if you cannot complete the task by browser-use CLI, don't give up, **always try to use this tool**.
+
+Use it when:
+- The task is complex and requires multiple steps.
+- The task involves interacting with dynamic elements on the page.
+- The task can be solve more efficiently by vision.
+- Need to fill in a form with dynamic data.
+- Meet problems when extracting data from a web page.
+- You has met troubles
+
+
+#### usage
+```bash
+python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "TASK TO DO"
+```
+Task to do must be clear, and you should provide all information you want to get, such as when you need to get comments from a blog post or posts from a website.
+
+#### Example
+```bash
+python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "Fill the contact form with test data"
+```
+
+This avoids Browser-Use Cloud requirements and uses the project's existing LLM configuration via environment variables (`MODEL`, `ARK_API_KEY`, `ARK_BASE_URL`). -->
+
 ### Agentic Tasks Script (via `agentic_browser_use.py`)
 
 This is the **ultimate weapon** for browser task, if you cannot complete the task by browser-use CLI, don't give up, **always try to use this tool**.
@@ -227,17 +253,43 @@ Use it when:
 - Meet problems when extracting data from a web page.
 - You has met troubles
 
-#### usage
+#### IMPORTANT LIMITATIONS (MUST READ)
+This script executes tasks in a **one-time, non-interactive manner** — the agent cannot:
+1. Pause mid-task to "report back" or "ask for instructions" (e.g., "check a form's fields first, then tell you what to fill, then fill it")
+2. Split tasks into "information gathering" and "action execution" phases (all required data/instructions must be provided upfront)
+
+#### Critical Guidelines for Task Description (MUST FOLLOW)
+To ensure the agent completes all required actions (not just surface-level operations), your task description MUST include:
+1. **All specific actions** the agent needs to perform (e.g., "click each post", "read full content", "extract comments")
+2. **All data points** to collect (e.g., post title, content, comment text, upvote count, author name)
+3. **All data points** to provide (e.g.(let form filling task as example) list all fields and corresponding values clearly if you know them, otherwise, you can first check what kind of data you need to provide, then provide them to this script)
+4. **Depth of operation** (e.g., "check the first 10 comments of each post", "scroll to load all content")
+
+#### Usage
 ```bash
-python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "TASK TO DO"
+python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "DETAILED TASK DESCRIPTION"
 ```
 
-#### Example
+#### Examples
+
+##### Example 1: Data Extraction (Reddit Post Analysis)
 ```bash
-python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "Fill the contact form with test data"
+python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "1. Go to reddit.com; 2. Search for 'openclaw' in the search bar; 3. For each of the first 5 search results: a. Click the post to open it; b. Extract post title, full content, upvote count, author name; c. Scroll to load all comments; d. Extract the first 10 comments (include comment text, author, upvote count); e. Return all extracted data in a structured format (title:..., content:..., comments: [...])"
+```
+
+##### Example 2: Form Filling (Contact Form)
+```bash
+python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "1. Navigate to https://example.com/contact; 2. Fill the contact form with the following data: a. Full Name: John Doe; b. Email: test@example.com; c. Phone: +1234567890; d. Subject: Product Inquiry; e. Message: I would like to know more about your openclaw product. Please contact me at your earliest convenience.; 3. Click the 'Submit' button; 4. Verify the form submission success message is displayed"
+```
+
+##### Example 3: Simple Data Extraction
+```bash
+python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "1. Visit https://example.com/blog; 2. For each blog post on the first page: a. Extract title, publish date, number of comments; b. Click the post to view full content; c. Extract the entire blog post text; 3. Save all extracted data in a readable format"
 ```
 
 This avoids Browser-Use Cloud requirements and uses the project's existing LLM configuration via environment variables (`MODEL`, `ARK_API_KEY`, `ARK_BASE_URL`).
+---
+
 
 ### Session Management
 ```bash
