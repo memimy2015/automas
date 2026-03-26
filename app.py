@@ -1,3 +1,30 @@
+import os
+from prompt_manager import get_prompt_manager
+
+
+PROMPT_VERSION_OVERRIDES = {
+    "execution_agent.system_template": None,
+    "execution_agent.submit_prompt": None,
+    "agent_factory.system": None,
+    "claimer.system": None,
+    "summarizer.system": None,
+    "planner.system_latest_instruction": None,
+    "planner.schedule_init": None,
+    "planner.schedule_continue": None,
+    "planner.schedule_replan": None,
+    "planner.schedule_pending": None,
+}
+
+
+def _apply_prompt_versions() -> None:
+    pm = get_prompt_manager()
+    for prompt_name, version in PROMPT_VERSION_OVERRIDES.items():
+        if version:
+            pm.set_active_version(prompt_name, version)
+
+
+_apply_prompt_versions()
+
 from control.SummarizerAgent import SummarizerAgent
 from execution.factory.agent_factory import AgentFactory
 from llm.json_schemas import ResourceReference
@@ -11,13 +38,17 @@ from resources.tools.file_operation import write_file, read_file
 from control.notifier import Notifier
 from resources.tools.console_input import get_input
 import argparse
-import os
-from cozeloop import new_client, flush, get_span_from_context
-from miscellaneous.observe import observe
-from cozeloop.logger import set_log_level
+# from cozeloop import new_client, flush, get_span_from_context
+from miscellaneous.observe import get_trace_id, observe, get_span_from_context
+# from cozeloop.logger import set_log_level
 import logging
+import json
 from miscellaneous.cozeloop_preprocess import loop_process_output, step_process_output, step_process_input
 import traceback
+
+# 网页模式相关导入
+from api.state_pusher import StatePusher
+from api.websocket_manager import WebSocketManager
 
 logger = logging.getLogger(__name__)
 
@@ -146,34 +177,83 @@ TEST_CASES["TEST_CASE_23"] = """
 设计好原型后，需要利用浏览器进行测试，并且进行相应优化。
 """
 
+TEST_CASES["TEST_CASE_24"] = """
+访问 https://pinchbench.com/ 去查看现在的榜单状况，对于前十名的模型，去查看他们的运行得分记录，里面有15个维度的得分，不要看百分数，得看具体的得分/满分，在最末尾还有23个任务的得分，也有对应的标签告诉你他们对应的是哪一类的任务，这里有精确到小数点第二位的得分情况，我现在需要你对每一个模型，统计一下每一个维度的得分/满分，能使用小数点后二位的数据来计分最好，然后输出一个csv文件，告诉我哪一个模型，对应的页面链接以及15个维度的得分情况，还有总分的得分情况
+"""
+
 # DEFAULT_TOOLS_LIST = ["command", "write_file", "read_file", "update_progress", "call_user"]
 
 
 def main():
+    # 调试：打印环境变量
+    print("=====Environment Variables=====")
+    print(f"AUTOMAS_WEB_MODE: {os.environ.get('AUTOMAS_WEB_MODE', 'NOT SET')}")
+    print(f"AUTOMAS_TASK_ID: {os.environ.get('AUTOMAS_TASK_ID', 'NOT SET')}")
+    print(f"AUTOMAS_TASK_DIR: {os.environ.get('AUTOMAS_TASK_DIR', 'NOT SET')}")
+    print(f"IS_DEBUG_ENABLED: {os.environ.get('IS_DEBUG_ENABLED', 'NOT SET')}")
+    print("================================")
+    
     parser = argparse.ArgumentParser()
     parser.add_argument("--load_from_file", type=str, required=False)
     parser.add_argument("--query", type=str, required=False)
     parser.add_argument("--task_dir", type=str, required=False, default="default")
-    parser.add_argument("--TEST_CASE", type=str, required=False, default="TEST_CASE_1")
+    parser.add_argument("--task_id", type=str, required=False, default=None)
+    parser.add_argument("--TEST_CASE", type=str, required=False, default="")
     parser.add_argument("--dry_run", action="store_true")
+    parser.add_argument("--debug", action="store_true", help="开启调试模式，启用 dump 功能")
+    parser.add_argument(
+        "--trace_provider",
+        type=str,
+        required=False,
+        default=os.environ.get("AUTOMAS_TRACE_PROVIDER", "promptpilot"),
+        choices=["cozeloop", "promptpilot"],
+    )
     args = parser.parse_args()
-    selected_test_case = TEST_CASES.get(args.TEST_CASE, TEST_CASES["TEST_CASE_1"])
+    os.environ["AUTOMAS_TRACE_PROVIDER"] = args.trace_provider
+    selected_test_case = TEST_CASES.get(args.TEST_CASE, "")
     if args.dry_run:
         print("=====Dry Run Mode=====")
         os.environ["AUTOMAS_ENABLE_OBSERVE"] = "0"
     else:
         os.environ["AUTOMAS_ENABLE_OBSERVE"] = "1"
+    # 设置调试模式
+    if args.debug:
+        os.environ["IS_DEBUG_ENABLED"] = "1"
+        print("=====Debug Mode Enabled=====")
+    else:
+        os.environ["IS_DEBUG_ENABLED"] = "0"
     os.environ["AUTOMAS_TASK_DIR"] = args.task_dir
-    set_log_level(logging.INFO)
-    print(f"TEST_CASE({args.TEST_CASE}): \n{selected_test_case}\n")
+    # set_log_level(logging.INFO)
+    if selected_test_case:
+        print(f"TEST_CASE({args.TEST_CASE}): \n{selected_test_case}\n")
+    elif args.query:
+        print(f"Query: {args.query}")
+    else:
+        print("No task specified. You must provide a TEST_CASE or a query.")
+        exit(1)
     
     @observe(
         name="main",
         span_type="main_span",
-        tags={"mode": 'simple', "node_id": 6076665},  # Set static custom tag. The Priority is higher than the default tags.
+        tags={"mode": 'simple', "node_id": 6076665, "task": args.query if args.query else selected_test_case},  # Set static custom tag. The Priority is higher than the default tags.
         baggage={"product_id": "123456654321", "Task": args.query if args.query else selected_test_case},  # Set static custom baggage. baggage can cover tag of sample key, and will pass to child span automatically.    
     )
     def go():
+        span = get_span_from_context()
+        if span is not None:
+            pm = get_prompt_manager()
+            prompts = pm.list_prompts()
+            snapshot = {}
+            for prompt_name, meta in prompts.items():
+                active = meta.get("active_version")
+                if active is not None:
+                    span.set_attribute(f"metadata.prompt.active.{prompt_name}", active)
+                versions = meta.get("versions", {})
+                span.set_attribute(f"metadata.prompt.versions_count.{prompt_name}", len(versions))
+                snapshot[prompt_name] = {"active": active, "versions": len(versions)}
+            span.set_attribute("metadata.prompt.snapshot_json", json.dumps(snapshot, ensure_ascii=False))
+            print("=====Prompt Snapshot=====")
+            print(snapshot)
         @observe(
             name="step",
             span_type="step_span",
@@ -207,6 +287,9 @@ def main():
                 "tool_usage": tool_usage,
             }
 
+        # 全局 state_pusher 变量（用于在 loop 中访问）
+        state_pusher = None
+        
         @observe(
             name="loop",
             span_type="loop_span",
@@ -219,6 +302,7 @@ def main():
             plan_agent: PlannerAgent,
             summarizer_agent: SummarizerAgent,
         ) -> dict:
+            nonlocal state_pusher  # 声明使用外部变量
             while not is_accomplished:
                 result = step(agent_factory, context_manager, plan_agent)
                 is_accomplished = result["is_accomplished"]
@@ -235,6 +319,9 @@ def main():
             summary, summary_usage = summarizer_agent.run()
             print(summary)
             context_manager.dump()
+            # 网页模式下推送最终完成状态
+            if os.environ.get("AUTOMAS_WEB_MODE") == "1" and state_pusher:
+                state_pusher.push("task_completed")
             return {
                 "summary": summary,
                 "summary_usage": summary_usage,
@@ -248,11 +335,23 @@ def main():
                 shell = PersistentShell()
                 tool_executer = ToolExecuter()
                 context_manager = ContextManager()
+                # 如果传入了 task_id，则设置到 context_manager
+                if args.task_id:
+                    context_manager.set_task_id(args.task_id)
                 if args.load_from_file:
                     context_manager.load(args.load_from_file)
                 context_manager.set_task_dir(args.task_dir)
                 if AUTO_DUMP:
                     context_manager.enable_auto_dump()
+
+                # 网页模式下初始化 StatePusher
+                if os.environ.get("AUTOMAS_WEB_MODE") == "1":
+                    task_id = os.environ.get("AUTOMAS_TASK_ID", context_manager.task_id)
+                    state_pusher = StatePusher(context_manager, task_id)
+                    context_manager.set_state_pusher(state_pusher)
+                    # 推送初始状态
+                    state_pusher.push("task_started")
+
                 notifier = Notifier(context_manager)
                 DEFAULT_TOOLS_LIST = tool_executer.list_tools()
                 print(f"Available tools: {DEFAULT_TOOLS_LIST}")
@@ -284,6 +383,15 @@ def main():
                 tool_executer = ToolExecuter()
                 context_manager = ContextManager()
                 context_manager.set_task_dir(args.task_dir)
+                
+                # 网页模式下初始化 StatePusher（非 debug 模式也需要）
+                if os.environ.get("AUTOMAS_WEB_MODE") == "1":
+                    task_id = os.environ.get("AUTOMAS_TASK_ID", context_manager.task_id)
+                    state_pusher = StatePusher(context_manager, task_id)
+                    context_manager.set_state_pusher(state_pusher)
+                    # 推送初始状态
+                    state_pusher.push("task_started")
+                
                 notifier = Notifier(context_manager)
                 DEFAULT_TOOLS_LIST = tool_executer.list_tools()
                 print(f"Available tools: {DEFAULT_TOOLS_LIST}")
@@ -306,15 +414,16 @@ def main():
                     summarizer_agent=summarizer_agent
                 )
         finally:
+            pass
             if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
-                header = get_span_from_context().to_header()
-                print(header)
-                trace_id = header['X-Cozeloop-Traceparent'].split('-')[1]
+                trace_id = get_trace_id()
+                if not trace_id:
+                    return
                 print(f"Trace ID: {trace_id}")
                 dir_path = os.path.join(os.path.join(context_manager.project_dir, "traces"), context_manager.task_dir)
                 os.makedirs(dir_path, exist_ok=True)
                 path = os.path.join(dir_path, f"{trace_id}.txt")
-                with open(path, "w") as f:  
+                with open(path, "w") as f:
                     f.write(trace_id)
             
     go()
@@ -323,11 +432,11 @@ if __name__ == "__main__":
 
     try:
         main()
-        if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
-            flush()
+        # if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+        #     flush()
     except Exception as e:
-        if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
-            flush()
+        # if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
+        #     flush()
         print(f"FATAL: {e}")
         traceback.print_exc()
     

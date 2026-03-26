@@ -1,13 +1,37 @@
 ---
 name: browser-use
-description: Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, or extract information from web pages. It also provide a powerful script to solve complex and multi-step tasks, use that script when you encounter troubles.
+description: |
+Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, or extract information from web pages.
+Use it when:
+  1. You need to work on multiple websites.
+  2. You need to navigate websites, interact with web pages, fill forms, take screenshots, or extract information from web pages. (Interact with web pages)
+  3. You need something like web-scraping.
 allowed-tools: Bash(browser-use:*), Bash(python:*)
 ---
 
+
+
 # Browser Automation with browser-use CLI
 
-The `browser-use` command provides fast, persistent browser automation. It maintains browser sessions across commands, enabling complex multi-step workflows.
+The `browser-use` command provides fast, persistent browser automation. It maintains browser sessions across commands, enabling complex multi-step workflows. It also provide some scripts to help you extract webpage data.
 
+## Before You Start
+
+If you already knows target url to extract data from, then you can try to use this scripts first.
+```bash
+python {PROJECT_DIR}/skills/browser-use/scripts/web_scraping.py {target_url}
+```
+If it fails, then you can try to use `browser-use` to navigate to that url first. And the follow content will help you learn how to use it.
+Additionally, never use
+```bash
+browser-use get html # get full html
+```
+That will return the full html of the page, which contains loads of unnecessary information and it might be very large that overflow your context window.
+Instead, use 
+```bash
+python {PROJECT_DIR}/skills/browser-use/scripts/web_scraping.py {target_url}
+```
+That will return the filtered data of the page, which is more useful for you.
 ## Installation
 
 ```bash
@@ -24,6 +48,7 @@ browser-use install
 ## Setup
 
 **One-line install (recommended)**
+
 ```bash
 curl -fsSL https://browser-use.com/cli/install.sh | bash
 ```
@@ -31,22 +56,25 @@ curl -fsSL https://browser-use.com/cli/install.sh | bash
 This interactive installer lets you choose your installation mode and configures everything automatically.
 
 **Installation modes:**
+
 ```bash
 curl -fsSL https://browser-use.com/cli/install.sh | bash -s -- --local-only   # Local browser only
 ```
 
-| Install Mode | Available Browsers | Default | Use Case |
-|--------------|-------------------|---------|----------|
-| `--local-only` | chromium, real | chromium | Local development |
+| Install Mode   | Available Browsers | Default  | Use Case          |
+| -------------- | ------------------ | -------- | ----------------- |
+| `--local-only` | chromium, real     | chromium | Local development |
 
 When only one mode is installed, it becomes the default and no `--browser` flag is needed.
 
 **Verify installation:**
+
 ```bash
 browser-use doctor
 ```
 
 **Setup wizard (first-time configuration):**
+
 ```bash
 browser-use setup                         # Interactive setup
 browser-use setup --mode local            # Configure for local browser only
@@ -54,6 +82,7 @@ browser-use setup --yes                   # Skip interactive prompts
 ```
 
 **Generate template files:**
+
 ```bash
 browser-use init                          # Interactive template selection
 browser-use init --list                   # List available templates
@@ -69,11 +98,13 @@ Choose ONE `open` mode:
 If the site returns "Access denied", a bot check/challenge, or renders incorrectly in headless mode, prefer `--headed` (it behaves more like a real user browser and is less likely to be blocked).
 
 **Option A: headless (default)**
+
 ```bash
 browser-use open https://example.com
 ```
 
 **Option B: headed (visible window)**
+
 ```bash
 browser-use --headed open https://example.com
 ```
@@ -88,7 +119,7 @@ browser-use screenshot                         # Take screenshot
 browser-use close                              # Close browser
 ```
 
-When using `--headed`, always run `browser-use close` after you're done (or after each headed `open`) to avoid stale sessions if the window is closed manually.
+When using `--headed`, always run `browser-use close` after you're done (or after each headed `open`) to avoid stale sessions if the window is closed manually. What's more, it's recommended to run `browser-use close` (single session)or `browser-use close --all` (multiple sessions) to close old and stale session.
 
 ## Core Workflow
 
@@ -111,9 +142,69 @@ browser-use --browser real open <url>          # User's Chrome with login sessio
 
 ## Commands
 
+## Help
+
+```bash
+browser-use -h
+```
+
+Example output (excerpt):
+
+```bash
+usage: browser-use [-h] [--session SESSION] [--browser {chromium,real}] [--headed] [--profile PROFILE] [--json] [--api-key API_KEY] [--mcp] [--template TEMPLATE]
+                   {install,init,open,click,type,input,scroll,back,screenshot,state,switch,close-tab,keys,select,eval,extract,hover,dblclick,rightclick,cookies,wait,get,python,run,sessions,close,server,profile}
+
+positional arguments:
+  install      Install Chromium browser + system dependencies
+  init         Generate browser-use template file
+  open         Navigate to URL
+  click        Click element by index
+  type         Type text
+  input        Type text into specific element
+  scroll       Scroll page
+  back         Go back in history
+  screenshot   Take screenshot
+  state        Get browser state (URL, title, elements)
+  switch       Switch to tab
+  close-tab    Close tab
+  keys         Send keyboard keys
+  select       Select dropdown option
+  eval         Execute JavaScript
+  extract      Extract data using LLM
+  hover        Hover over element
+  dblclick     Double-click element
+  rightclick   Right-click element
+  cookies      Cookie operations
+  wait         Wait for conditions
+  get          Get information
+  python       Execute Python code
+  run          Run agent task (requires API key)
+  sessions     List active sessions
+  close        Close session
+  server       Server control
+  profile      Manage browser profiles
+
+options:
+  -h, --help            show this help message and exit
+  --session SESSION     Session name (default: default)
+  --browser {chromium,real}, -b {chromium,real}
+                        Browser mode 
+  --headed              Show browser window
+  --profile PROFILE     Chrome profile (real browser mode)
+  --json                Output as JSON
+  --api-key API_KEY     Browser-Use API key
+  --mcp                 Run as MCP server (JSON-RPC via stdin/stdout)
+  --template TEMPLATE   Generate template file (use with --output for custom path)
+```
+
+Project usage note:
+
+- Do NOT use `extract`, `run`, `--mcp`, `--api-key`, `remote`or  `--template` in this project. Prefer deterministic CLI commands (`open/state/click/input/get/eval/python`).
+
 ### Navigation
 
 Choose ONE `open` mode:
+
 ```bash
 browser-use open <url>                    # Default: headless
 # browser-use --headed open <url>          # Optional: visible window
@@ -124,14 +215,17 @@ browser-use scroll down --amount 1000     # Scroll by specific pixels (default: 
 ```
 
 ### Page State
+
 ```bash
 browser-use state                         # Get URL, title, and clickable elements
 browser-use screenshot                    # Take screenshot (outputs base64)
 browser-use screenshot path.png           # Save screenshot to file
 browser-use screenshot --full path.png    # Full page screenshot
 ```
+Prefer saving screenshots to files (instead of base64). Then reference the saved image path when you need to inspect the UI or extract visual details.
 
 ### Interactions (use indices from `browser-use state`)
+
 ```bash
 browser-use click <index>                 # Click element
 browser-use type "text"                   # Type text into focused element
@@ -142,14 +236,15 @@ browser-use select <index> "option"       # Select dropdown option
 ```
 
 ### Tab Management
+
 ```bash
 browser-use switch <tab>                  # Switch to tab by index
 browser-use close-tab                     # Close current tab
 browser-use close-tab <tab>               # Close specific tab
 ```
 
-
 ### Cookies
+
 ```bash
 browser-use cookies get                   # Get all cookies
 browser-use cookies get --url <url>       # Get cookies for specific URL
@@ -165,6 +260,7 @@ browser-use cookies import <file>         # Import cookies from JSON file
 ```
 
 ### Wait Conditions
+
 ```bash
 browser-use wait selector "h1"            # Wait for element to be visible
 browser-use wait selector ".loading" --state hidden  # Wait for element to disappear
@@ -174,6 +270,7 @@ browser-use wait selector "h1" --timeout 5000  # Custom timeout in ms
 ```
 
 ### Additional Interactions
+
 ```bash
 browser-use hover <index>                 # Hover over element (triggers CSS :hover)
 browser-use dblclick <index>              # Double-click element
@@ -181,6 +278,7 @@ browser-use rightclick <index>            # Right-click element (context menu)
 ```
 
 ### Information Retrieval
+
 ```bash
 browser-use get title                     # Get page title
 browser-use get html                      # Get full page HTML
@@ -191,7 +289,31 @@ browser-use get attributes <index>        # Get all attributes of element
 browser-use get bbox <index>              # Get bounding box (x, y, width, height)
 ```
 
+#### Warning
+Be careful, **never** use
+```bash
+browser-use get html # get full html
+```
+That will return the full html of the page, which contains loads of unnecessary information and it might be very large that **overflow your context window**.
+
+Instead, use 
+```bash
+python {PROJECT_DIR}/skills/browser-use/scripts/web_scraping.py {target_url}
+```
+That will return the filtered data of the page, which is more useful for you.
+
+### JavaScript Execution (eval)
+
+```bash
+browser-use eval "document.title"
+browser-use eval "location.href"
+browser-use eval "document.querySelector('h1')?.textContent"
+browser-use eval "Array.from(document.querySelectorAll('a')).slice(0, 5).map(a => a.href)"
+browser-use eval "window.location.href"
+```
+
 ### Python Execution (Persistent Session)
+
 ```bash
 browser-use python "x = 42"               # Set variable
 browser-use python "print(x)"             # Access variable (outputs: 42)
@@ -201,7 +323,18 @@ browser-use python --reset                # Clear Python namespace
 browser-use python --file script.py       # Execute Python file
 ```
 
+### Scroll and state
+
+When you find state command doesn't return enough information, you can use scroll command to scroll down or up, you can use `--amount` to specify the amount of pixels to scroll.
+
+```bash
+browser-use state                         # Get page elements with indices, but find that it doesn't return enough information
+browser-use scroll down                   # Scroll down
+browser-use state                         # state again to get more information
+```
+
 The Python session maintains state across commands. The `browser` object provides:
+
 - `browser.url` - Current page URL
 - `browser.title` - Page title
 - `browser.html` - Get page HTML
@@ -215,83 +348,8 @@ The Python session maintains state across commands. The `browser` object provide
 - `browser.back()` - Go back in history
 - `browser.wait(seconds)` - Sleep/pause execution
 
-<!-- ### Agentic Tasks Script (via `agentic_browser_use.py`)
-
-This is the **ultimate weapon** for browser task, if you cannot complete the task by browser-use CLI, don't give up, **always try to use this tool**.
-
-Use it when:
-- The task is complex and requires multiple steps.
-- The task involves interacting with dynamic elements on the page.
-- The task can be solve more efficiently by vision.
-- Need to fill in a form with dynamic data.
-- Meet problems when extracting data from a web page.
-- You has met troubles
-
-
-#### usage
-```bash
-python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "TASK TO DO"
-```
-Task to do must be clear, and you should provide all information you want to get, such as when you need to get comments from a blog post or posts from a website.
-
-#### Example
-```bash
-python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "Fill the contact form with test data"
-```
-
-This avoids Browser-Use Cloud requirements and uses the project's existing LLM configuration via environment variables (`MODEL`, `ARK_API_KEY`, `ARK_BASE_URL`). -->
-
-### Agentic Tasks Script (via `agentic_browser_use.py`)
-
-This is the **ultimate weapon** for browser task, if you cannot complete the task by browser-use CLI, don't give up, **always try to use this tool**.
-
-Use it when:
-- The task is complex and requires multiple steps.
-- The task involves interacting with dynamic elements on the page.
-- The task can be solve more efficiently by vision.
-- Need to fill in a form with dynamic data.
-- Meet problems when extracting data from a web page.
-- You has met troubles
-
-#### IMPORTANT LIMITATIONS (MUST READ)
-This script executes tasks in a **one-time, non-interactive manner** — the agent cannot:
-1. Pause mid-task to "report back" or "ask for instructions" (e.g., "check a form's fields first, then tell you what to fill, then fill it")
-2. Split tasks into "information gathering" and "action execution" phases (all required data/instructions must be provided upfront)
-
-#### Critical Guidelines for Task Description (MUST FOLLOW)
-To ensure the agent completes all required actions (not just surface-level operations), your task description MUST include:
-1. **All specific actions** the agent needs to perform (e.g., "click each post", "read full content", "extract comments")
-2. **All data points** to collect (e.g., post title, content, comment text, upvote count, author name)
-3. **All data points** to provide (e.g.(let form filling task as example) list all fields and corresponding values clearly if you know them, otherwise, you can first check what kind of data you need to provide, then provide them to this script)
-4. **Depth of operation** (e.g., "check the first 10 comments of each post", "scroll to load all content")
-
-#### Usage
-```bash
-python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "DETAILED TASK DESCRIPTION"
-```
-
-#### Examples
-
-##### Example 1: Data Extraction (Reddit Post Analysis)
-```bash
-python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "1. Go to reddit.com; 2. Search for 'openclaw' in the search bar; 3. For each of the first 5 search results: a. Click the post to open it; b. Extract post title, full content, upvote count, author name; c. Scroll to load all comments; d. Extract the first 10 comments (include comment text, author, upvote count); e. Return all extracted data in a structured format (title:..., content:..., comments: [...])"
-```
-
-##### Example 2: Form Filling (Contact Form)
-```bash
-python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "1. Navigate to https://example.com/contact; 2. Fill the contact form with the following data: a. Full Name: John Doe; b. Email: test@example.com; c. Phone: +1234567890; d. Subject: Product Inquiry; e. Message: I would like to know more about your openclaw product. Please contact me at your earliest convenience.; 3. Click the 'Submit' button; 4. Verify the form submission success message is displayed"
-```
-
-##### Example 3: Simple Data Extraction
-```bash
-python {PROJECT_DIR}/skills/browser-use/scripts/agentic_browser_use.py "1. Visit https://example.com/blog; 2. For each blog post on the first page: a. Extract title, publish date, number of comments; b. Click the post to view full content; c. Extract the entire blog post text; 3. Save all extracted data in a readable format"
-```
-
-This avoids Browser-Use Cloud requirements and uses the project's existing LLM configuration via environment variables (`MODEL`, `ARK_API_KEY`, `ARK_BASE_URL`).
----
-
-
 ### Session Management
+
 ```bash
 browser-use sessions                      # List active sessions
 browser-use close                         # Close current session
@@ -301,6 +359,7 @@ browser-use close --all                   # Close all sessions
 ### Profile Management
 
 #### Local Chrome Profiles (`--browser real`)
+
 ```bash
 browser-use -b real profile list          # List local Chrome profiles
 ```
@@ -325,6 +384,7 @@ browser-use --browser real --profile "Default" cookies export /tmp/cookies.json
 Each Chrome profile has its own cookies, history, and logged-in sessions. Choosing the right profile determines whether sites will be pre-authenticated.
 
 ### Server Control
+
 ```bash
 browser-use server status                 # Check if server is running
 browser-use server stop                   # Stop server
@@ -332,26 +392,28 @@ browser-use server logs                   # View server logs
 ```
 
 ### Setup
+
 ```bash
 browser-use install                       # Install Chromium and system dependencies
 ```
 
 ## Global Options
 
-| Option | Description |
-|--------|-------------|
+| Option           | Description                            |
+| ---------------- | -------------------------------------- |
 | `--session NAME` | Use named session (default: "default") |
-| `--browser MODE` | Browser mode: chromium, real |
-| `--headed` | Show browser window (chromium mode) |
-| `--profile NAME` | Browser profile (local name) |
-| `--json` | Output as JSON |
-| `--mcp` | Run as MCP server via stdin/stdout |
+| `--browser MODE` | Browser mode: chromium, real           |
+| `--headed`       | Show browser window (chromium mode)    |
+| `--profile NAME` | Browser profile (local name)           |
+| `--json`         | Output as JSON                         |
+| `--mcp`          | Run as MCP server via stdin/stdout     |
 
 **Session behavior**: All commands without `--session` use the same "default" session. The browser stays open and is reused across commands. Use `--session NAME` to run multiple browsers in parallel.
 
 ## Examples
 
 ### Form Submission
+
 ```bash
 browser-use open https://example.com/contact           # Default: headless
 # browser-use --headed open https://example.com/contact  # Optional: visible window
@@ -366,6 +428,7 @@ browser-use close # Always use close when current task is finished
 ```
 
 ### Multi-Session Workflows
+
 ```bash
 browser-use --session work open https://work.example.com
 browser-use --session personal open https://personal.example.com
@@ -378,6 +441,7 @@ browser-use close --all             # Close both sessions
 ```
 
 ### Data Extraction with Python
+
 ```bash
 browser-use open https://example.com/products           # Default: headless
 # browser-use --headed open https://example.com/products  # Optional: visible window
@@ -392,6 +456,7 @@ browser-use close # Always use close when current task is finished
 ```
 
 ### Using Real Browser (Logged-In Sessions)
+
 ```bash
 browser-use --browser real open https://gmail.com
 # Uses your actual Chrome with existing login sessions
@@ -414,11 +479,11 @@ browser-use close # Always use close when current task is finished
 
 ## Tips
 
-1. **Always run `browser-use state` first** to see available elements and their indices
-2. **Use `--headed` for debugging** to see what the browser is doing, or just let user to see real time operation
-3. **Prefer `--headed` when needed**: debugging, manual login/verification, or when a site blocks headless (e.g., "Access denied" / bot challenge like Reddit)
+1. **Always run** **`browser-use state`** **first** to see available elements and their indices
+2. **Use** **`--headed`** **for debugging** to see what the browser is doing, or just let user to see real time operation
+3. **Prefer** **`--headed`** **when needed**: debugging, manual login/verification, or when a site blocks headless (e.g., "Access denied" / bot challenge like Reddit)
 4. **Sessions persist** - the browser stays open between commands
-5. **Use `--json` for parsing** output programmatically
+5. **Use** **`--json`** **for parsing** output programmatically
 6. **Python variables persist** across `browser-use python` commands within a session
 7. **Real browser mode** preserves your login sessions and extensions
 8. **CLI aliases**: `bu`, `browser`, and `browseruse` all work identically to `browser-use`
@@ -426,11 +491,13 @@ browser-use close # Always use close when current task is finished
 ## Troubleshooting
 
 **Run diagnostics first:**
+
 ```bash
 browser-use doctor                    # Check installation status
 ```
 
 **Browser won't start?**
+
 ```bash
 browser-use install                   # Install/reinstall Chromium
 browser-use server stop               # Stop any stuck server
@@ -439,13 +506,19 @@ browser-use open <url>                # Default: headless
 # browser-use --headed open <url>      # Optional: visible window (use close when done)
 ```
 
-**Access denied / bot challenge / needs manual verification or login?**
+**Access denied(blocked) / bot challenge / needs manual verification or login?**
+
+If you see a login prompt, CAPTCHA, or any human verification flow, user involvement is required. Always use a visible browser window (`--headed`) and notify the user to complete the verification steps. If the user says they cannot see any browser window, or you find that you are not using `--headed` to open url, then run `browser-use close --all` first, then open again with `--headed`.
+
 ```bash
 browser-use close --all               # Close stale sessions (recommended before headed verification/login)
 browser-use --headed open <url>       # Visible window for captcha / verification / login steps
 ```
 
+If the site is blocked even with `--headed`, fall back to the web scraping skill/script (`skills/web_scraping/scripts/web_scraping.py`) as an alternative extraction path.
+
 **Element not found?**
+
 ```bash
 browser-use state                     # Check current elements
 browser-use scroll down               # Element might be below fold
@@ -453,13 +526,13 @@ browser-use state                     # Check again
 ```
 
 **Session issues?**
+
 ```bash
 browser-use sessions                  # Check active sessions
 browser-use close --all               # Clean slate
 browser-use open <url>                # Fresh start (default: headless)
 # browser-use --headed open <url>      # Optional: visible window
 ```
-
 
 ## Cleanup
 

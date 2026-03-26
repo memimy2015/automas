@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 import html2text
 import sys
-
+import time
 
 def scrape_webpage(url):
     """
@@ -40,10 +40,10 @@ def scrape_webpage(url):
             # Go to URL and wait for load
             # 'domcontentloaded' is faster than 'networkidle' but might miss some dynamic content
             # For articles, domcontentloaded is usually enough to get the text
-            page.goto(url, wait_until='domcontentloaded', timeout=30000)
+            page.goto(url, wait_until='domcontentloaded', timeout=50000)
             
             # Wait a bit for any dynamic content/redirects
-            # time.sleep(2) 
+            time.sleep(2) 
             
             # Get HTML content
             html_content = page.content()

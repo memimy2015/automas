@@ -1,3 +1,5 @@
+import os
+
 try:
     import msvcrt
 except Exception:
@@ -15,6 +17,22 @@ except Exception:
 
 
 def get_input(prompt: str) -> str:
+    """
+    获取用户输入 - 支持命令行模式和网页模式
+    """
+    # 检查是否在网页模式
+    if os.environ.get("AUTOMAS_WEB_MODE") == "1":
+        task_id = os.environ.get("AUTOMAS_TASK_ID")
+        if not task_id:
+            raise RuntimeError("AUTOMAS_TASK_ID not set in web mode")
+
+        # 从缓冲区等待用户响应（阻塞）
+        # 注意：prompt 中包含了 Agent 的问题，但 InputBuffer 已经通过 Notifier 注册了
+        # 使用 api.input_buffer 中的全局函数（在子进程中通过 set_queue 设置了队列）
+        from api.input_buffer import wait_for_response
+        return wait_for_response(task_id, timeout=300)
+
+    # 命令行模式（原有逻辑）
     if _HAS_PROMPT_TOOLKIT:
         with patch_stdout():
             print(prompt, end="", flush=True)

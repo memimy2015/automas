@@ -11,6 +11,8 @@ from execution.agent.prompt import render
 from .notifier import Notifier
 from datetime import datetime
 from miscellaneous.observe import observe
+from config.logger import setup_logger
+from prompt_manager import get_prompt_manager
 
 def access_knowledgeDB():
     return "None"
@@ -53,7 +55,9 @@ Your work must be precise, complete, and strictly aligned with the user’s stat
 class SummarizerAgent:
     def __init__(self, notifier: Notifier, context_manager: ContextManager):
         self.messages = []
-        prompt = DEFAULT_INSTRUCTION
+        self.logger = setup_logger("SummarizerAgent")
+        pm = get_prompt_manager()
+        prompt = pm.get("summarizer.system", DEFAULT_INSTRUCTION)
         self.notifier = notifier
         self.context_manager = context_manager
         # 注册 Agent id 和 channel
@@ -115,6 +119,7 @@ class SummarizerAgent:
             self._prepare_context()
             finish_reason, resp, usage = llm_call(messages=self.messages, tools=[])
             if finish_reason == "error":
+                self.logger.error(f"LLM error: msg={getattr(resp, 'content', '')}")
                 raise RuntimeError(resp.content)
             self.append_message(
                 {
@@ -125,8 +130,13 @@ class SummarizerAgent:
                 dump=True
             )
             return resp.content, usage
+        except Exception as e:
+            self.logger.error(f"Run exception: err={e}")
+            raise
         finally:
             self.context_manager._auto_dump("summarizer_exit", {"agent_id": self.agent_id})
+            # 通知状态变更（Summarizer 完成）
+            self.context_manager._notify_state_change("summarizer_completed")
     
     def _prepare_context(self):
         self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", "Claimer*", self.identity + "_main"], formatted=False)

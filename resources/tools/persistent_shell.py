@@ -15,11 +15,74 @@ if automas_dir not in sys.path:
 from config.logger import setup_logger
 
 class PersistentShell:
+    OUTPUT_PROCESSING_RULES = {}
+
     def __init__(self):
         self.process = None
         self.output_queue = queue.Queue()
         self.is_alive = False
         self.logger = setup_logger("PersistentShell")
+
+    def _normalize_command_for_match(self, command: str) -> str:
+        cmd = (command or "").strip().lower()
+        cmd = cmd.replace("\\", "/")
+        cmd = re.sub(r"\s+", " ", cmd)
+        return cmd
+
+    def _slice_from_last_marker(self, text: str, marker: str, *, include_marker: bool) -> str:
+        if not text:
+            return text
+        if not marker:
+            return text
+        idx = text.rfind(marker)
+        if idx < 0:
+            return text
+        if include_marker:
+            return text[idx:]
+        return text[idx + len(marker) :]
+
+    def _slice_from_last_marker_any(self, text: str, markers: list[str], *, include_marker: bool) -> str:
+        if not text:
+            return text
+        best_idx = -1
+        best_marker = ""
+        for m in markers or []:
+            if not m:
+                continue
+            idx = text.rfind(m)
+            if idx > best_idx:
+                best_idx = idx
+                best_marker = m
+        if best_idx < 0:
+            return text
+        if include_marker:
+            return text[best_idx:]
+        return text[best_idx + len(best_marker) :]
+
+    def _clip_output(self, text: str, max_len: int = 15000) -> str:
+        if text is None:
+            return text
+        if max_len <= 0:
+            return ""
+        if len(text) <= max_len:
+            return text
+        ellipsis = "..."
+        if max_len <= len(ellipsis):
+            return ellipsis[:max_len]
+        keep = max_len - len(ellipsis)
+        head_len = keep // 2
+        tail_len = keep - head_len
+        return f"{text[:head_len]}{ellipsis}{text[-tail_len:]}"
+
+    def _process_output_by_whitelist(self, command: str, output: str) -> str:
+        cmd = self._normalize_command_for_match(command)
+        for rule in self.OUTPUT_PROCESSING_RULES.values():
+            match_any = rule.get("match_any") or []
+            if any(s in cmd for s in match_any):
+                processor = rule.get("process")
+                if callable(processor):
+                    return processor(self, output)
+        return output
 
     def create_terminal(self):
         """
@@ -198,7 +261,7 @@ class PersistentShell:
                 except:
                      pass
 
-                result_output = "".join(output_buffer)
+                result_output = self._clip_output("".join(output_buffer), 15000)
                 self.logger.error(f"execute status: False\nstdout:{result_output}\n[Error: Command idle-timed out after {timeout} seconds without output. Sent SIGINT to interrupt.]")
                 return f"execute status: False\nstdout:{result_output}\n[Error: Command idle-timed out after {timeout} seconds without output. Sent SIGINT to interrupt.]"
 
@@ -234,6 +297,8 @@ class PersistentShell:
                                 self.logger.warning("Could not parse exit code")
                         else:
                             self.logger.warning("Exit code marker not found")
+
+                        result = self._process_output_by_whitelist(command, result)
 
                         self.logger.info(f"execute status: {success}\nstdout:\n{result}")
                         print(f"execute status: {success}\nstdout:\n{result}")

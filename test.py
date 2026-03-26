@@ -1,5 +1,6 @@
 from llm.llm import llm_call_json_schema
 from resources.tools.console_input import get_input
+from resources.tools.skill_tool import get_skill_list
 from cozeloop import flush, get_span_from_context
 from miscellaneous.observe import observe
 import argparse
@@ -31,6 +32,11 @@ tools = [
     }
 ]
 
+
+print(get_skill_list())
+txt = "\u001b[0m: []\nINFO     [Agent] \n📄 \u001b[32m Final Result:\u001b[0m \n已成功获取Reddit平台最近一周关于OpenCLaw的帖子信息，具体内容如下：\n1. 标题：Top Models used with OpenClaw?，发布时间：6天前，点赞数：9，评论数：15\n2. 标题：how I run a 24/7 AI company with OpenClaw for $50/month，发布时间：7天前，点赞数：139，评论数：49\n3. 标题：\"NVIDIA is now releasing their own open claw 🤯 nemoclaw will be an opensource ai agent built for the enterprise world. It can run on amd, intel, or whatever hardware NOT just nvdia gpus. \" - I am hearing claw in many places and it may well be good for Open Source!，发布时间：4天前，点赞数：11，评论数：8\n4. 标题：Making Money With Openclaw!，发布时间：7天前，点赞数：47，评论数：78\n5. 标题：Finall"
+pattern = "\x1b[32m Final Result:\x1b[0m"
+print(txt.split(pattern)[-1]) # 这个是应该保留的输出
 parser = argparse.ArgumentParser()
 parser.add_argument("--test_case", type=str, default="114514", required=False)
 

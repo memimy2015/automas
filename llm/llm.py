@@ -4,12 +4,15 @@ from miscellaneous.cozeloop_preprocess import llm_call_process_output, llm_call_
 from miscellaneous.cozeloop_preprocess import llm_call_json_schema_process_input
 from .json_schemas import SubmitMessage
 from .json_schemas import FactoryOutput
-from volcenginesdkarkruntime import Ark
+try:
+    from volcenginesdkarkruntime import Ark
+except Exception:
+    Ark = None
 import os
 from pydantic import BaseModel, Field
 from .json_schemas import ClaimerSchema, PlannedTasks, Replan, ContinueNextStep, JudgePlannerState
-from miscellaneous.observe import observe
-from cozeloop import flush, get_span_from_context
+from miscellaneous.observe import get_span_from_context, observe
+# from cozeloop import flush
 from control.context_manager import ContextManager
 from config.logger import setup_logger
 import time
@@ -79,6 +82,21 @@ def _retry_call(fn, *, max_retries: int):
             time.sleep(min(2 ** attempt, 8) + random.random() * 0.2)
     raise last_exc if last_exc else RuntimeError("LLM call failed")
 
+def _validate_tool_calls_response(resp, *, caller: str):
+    try:
+        choice0 = resp.choices[0]
+        finish_reason = choice0.finish_reason
+        msg = choice0.message
+    except Exception:
+        return
+    if finish_reason != "tool_calls":
+        return
+    tool_calls = getattr(msg, "tool_calls", None) or []
+    if tool_calls:
+        return
+    logger.warning(f"{caller} returned finish_reason=tool_calls but tool_calls is empty; retrying")
+    raise RuntimeError("finish_reason is tool_calls but tool_calls is empty")
+
 @observe(
     name="llm_call",
     span_type="model",
@@ -90,24 +108,25 @@ def llm_call(*, messages: list, tools: list):
     """
     调用模型，返回模型的回复
     """
-    # print(f"llm_call messages: \n {messages}")
-    # print(f"llm_call tools: \n {tools}")
     
     max_retries = _env_int("AUTOMAS_LLM_MAX_RETRIES", MAX_RETRIES)
     try:
         def _do_call():
-            return client.chat.completions.create(
+            resp = client.chat.completions.create(
                 model=model,
                 stream=False,
                 extra_body={
                     "thinking": {
-                        "type": "disabled"
-                    }
+                        "type": "enabled"
+                    },
+                    "reasoning_effort" : "medium"
                 },
                 messages=messages,
                 tools=tools,
                 max_tokens=30 * 1024,
             )
+            _validate_tool_calls_response(resp, caller="llm_call")
+            return resp
 
         resp = _retry_call(_do_call, max_retries=max_retries)
     except Exception as e:
@@ -115,13 +134,14 @@ def llm_call(*, messages: list, tools: list):
         return "error", LLMErrorMessage(content=f"LLM调用失败：{e}"), LLMErrorUsage()
     formatted_usage = format_token_usage(resp.usage)
     if os.environ.get("AUTOMAS_ENABLE_OBSERVE") == "1":
-        get_span_from_context().set_tags({
-            "input_tokens": formatted_usage["prompt_tokens"], 
-            "output_tokens": formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"],
-            "last_dump_filepath": context_manager.last_dump_filepath
-            }
+        span = get_span_from_context()
+        span.set_attribute("metadata.input_tokens", formatted_usage["prompt_tokens"])
+        span.set_attribute(
+            "metadata.output_tokens",
+            formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"],
         )
-        flush()
+        span.set_attribute("metadata.last_dump_filepath", context_manager.last_dump_filepath)
+        # flush()
     finish_reason = resp.choices[0].finish_reason
     if finish_reason == "content_filter":
         logger.warning("WARNING: 生成内容被审核拦截")
@@ -146,18 +166,21 @@ def llm_call_json_schema(*, messages: list, tools: list, jsonSchema: str):
     max_retries = _env_int("AUTOMAS_LLM_MAX_RETRIES", MAX_RETRIES)
     try:
         def _do_call():
-            return client.beta.chat.completions.parse(
+            resp = client.beta.chat.completions.parse(
                 model=model,
                 extra_body={
                     "thinking": {
-                        "type": "disabled"
-                    }
+                        "type": "enabled"
+                    },
+                    "reasoning_effort" : "medium"
                 },
                 messages=messages,
                 tools=tools,
                 response_format=registered_schema[jsonSchema],
                 max_tokens=30 * 1024,
             )
+            _validate_tool_calls_response(resp, caller="llm_call_json_schema")
+            return resp
 
         resp = _retry_call(_do_call, max_retries=max_retries)
     except Exception as e:
@@ -173,13 +196,14 @@ def llm_call_json_schema(*, messages: list, tools: list, jsonSchema: str):
         return "error", LLMErrorMessage(content=f"LLM调用失败：{e}", parsed=parsed_default), LLMErrorUsage()
     formatted_usage = format_token_usage(resp.usage)  
     if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
-        get_span_from_context().set_tags({
-            "input_tokens": formatted_usage["prompt_tokens"], 
-            "output_tokens": formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"],
-            "last_dump_filepath": context_manager.last_dump_filepath
-            }
+        span = get_span_from_context()
+        span.set_attribute("metadata.input_tokens", formatted_usage["prompt_tokens"])
+        span.set_attribute(
+            "metadata.output_tokens",
+            formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"],
         )
-        flush()
+        span.set_attribute("metadata.last_dump_filepath", context_manager.last_dump_filepath)
+        # flush()
     finish_reason = resp.choices[0].finish_reason
     if finish_reason == "content_filter":
         logger.warning("WARNING: 生成内容被审核拦截")

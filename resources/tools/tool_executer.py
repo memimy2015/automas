@@ -63,7 +63,7 @@ class ToolExecuter:
             "type": "function",
             "function": {
                 "name": "read_file",
-                "description": "读取文件，包括txt，html，markdown，py等文本内容，主要是为了后续的shell命令执行",    
+                "description": "读取文件内容：支持 txt/html/markdown/py 等文本文件；支持本地图片文件读取；支持图片 URL 读取；对于大小超过10MB的图片，会自动尝试压缩。",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -81,7 +81,7 @@ class ToolExecuter:
             "type": "function",
             "function": {
                 "name": "load_full_skill_doc",
-                "description": "读取 skills.md 的完整内容",
+                "description": "读取技能文件 skills.md 的完整内容",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -99,13 +99,13 @@ class ToolExecuter:
             "type": "function",
             "function": {
                 "name": "update_progress",
-                "description": "更新当前正在执行的子任务的进度，也可以说是对里程碑事件的记录，例如中间步骤得到成果，或者是出现错误信息。当你觉得目前任务执行出现了这类信息时，可以调用此函数记录下当前的进度。但是必须保证信息精确简洁。",
+                "description": "记录可验证的里程碑/状态变化（产物生成、关键结论、错误与重试、阻塞原因、外部依赖完成等）。不要记录中间推理、草稿、闲聊或长篇过程描述。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "info": {
                             "type": "string",
-                            "description": "执行的子任务的进度信息，也可以说是对里程碑事件的记录，例如中间步骤得到成果，或者是出现错误信息，必须保证信息精确简洁。"
+                            "description": "一条简短、可验证的事实记录：做了什么→结果是什么；必要时附路径/错误摘要/错误码。避免敏感信息与长段落。"
                         }
                     },
                     "required": ["info"]
@@ -117,13 +117,13 @@ class ToolExecuter:
             "type": "function",
             "function": {
                 "name": "call_user",
-                "description": "调用用户交互的工具，用于向用户获取更多信息。当你认为目前的情况需要得到用户的许可或者指挥，就使用这个方法。比如遇到权限问题时、需要用户确认某个关键操作时，又或者是遇到严重错误等，可能需要用户进行后续计划的判断的情况，此时一定要请求用户的回答。其他情况下尽量不要使用这个工具打扰用户，尤其是问候类的语句。",
+                "description": "向用户发起一次交互请求，仅在必须由用户提供信息/确认关键决策/完成外部验证时使用。不要用它发送中间推理、草稿或进度汇报。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "发送给用户的信息，用户需要根据这个信息进行确认或操作。如果这个信息需要用户做出选择，你最好提供几个选择给用户参考。尤其是遇到严重错误无法完成任务时，必须请求用户确认是否继续执行后续操作或者提供信息来解决错误，为此请在发给用户的提问中包含必要的信息，例如确认操作、拒绝操作、提供额外信息、解决建议等。"
+                            "description": "发给用户的请求内容，必须简短明确，但是格式要美观，推荐使用markdown格式：说明需要用户做什么/提供什么信息/确认什么决策，并给出可选项或可复制的输入格式。不要包含中间推理或无关背景。"
                         }
                     },
                     "required": ["query"]

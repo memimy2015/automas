@@ -12,6 +12,8 @@ from execution.agent.prompt import render
 from .notifier import Notifier
 from miscellaneous.observe import observe
 import os
+from config.logger import setup_logger
+from prompt_manager import get_prompt_manager
 
 def access_knowledgeDB():
     return "None"
@@ -45,8 +47,10 @@ JSON format
 class ClaimerAgent:
     def __init__(self, notifier: Notifier, context_manager: ContextManager):
         self.messages = []
+        self.logger = setup_logger("ClaimerAgent")
         # prompt = DEFAULT_INSTRUCTION.format(access_knowledgeDB())
-        prompt = DEFAULT_INSTRUCTION.format(PROJECT_DIR=context_manager.get_project_dir())
+        pm = get_prompt_manager()
+        prompt = pm.render("claimer.system", DEFAULT_INSTRUCTION, None, PROJECT_DIR=context_manager.get_project_dir())
         self.notifier = notifier
         self.context_manager = context_manager
         agent_id, channel = self.context_manager.get_consistent_agent_identity("Claimer")
@@ -93,6 +97,7 @@ class ClaimerAgent:
             self._prepare_context()
             finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
             if finish_reason == "error":
+                self.logger.error(f"LLM error: msg={getattr(resp, 'content', '')}")
                 raise RuntimeError(resp.content)
             resp = resp.parsed
             print(f'Finish Reason: {finish_reason}')
@@ -112,16 +117,17 @@ class ClaimerAgent:
                 self._prepare_context()
                 finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
                 if finish_reason == "error":
+                    self.logger.error(f"LLM error: msg={getattr(resp, 'content', '')}")
                     raise RuntimeError(resp.content)
                 resp = resp.parsed
             print(f"Source reference: \n {resp.resource_reference}")
             print(f"Refined objective: \n {resp.refined_objective}")
             for resource_ref in resp.resource_reference:
-                self.append_message({"role": "user", "content": f"可用资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"}, channel=[self.identity + "_main", "user"], dump=False)
+                self.append_message({"role": "user", "content": f"可用资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"}, channel=[self.identity + "_main"], dump=False)
                 self.context_manager.add_available_resources({resource_ref.description: resource_ref}, dump=False)
             print("=====ClaimerAgent Finished=====")
             self.context_manager.is_clarified = True
-            self.append_message({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"}, channel=[self.identity + "_main", "user"], dump=False)
+            self.append_message({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"}, channel=[self.identity + "_main"], dump=False)
             self.context_manager.update_overall_goal(resp.refined_objective, dump=True)
             qa_snapshot = list(QA)
             return {
@@ -130,10 +136,15 @@ class ClaimerAgent:
                 "total_usage": usage,
                 "QA": qa_snapshot
             }
+        except Exception as e:
+            self.logger.error(f"Run exception: err={e}")
+            raise
         finally:
             self.context_manager.clear_active_qa("claimer", dump=False)
             QA.clear()
             self.context_manager._auto_dump("claimer_exit", {"agent_id": self.agent_id})
+            # 通知状态变更（Claimer 完成）
+            self.context_manager._notify_state_change("claimer_completed")
         
     def _prepare_context(self):
         self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=[self.identity + "_main"], formatted=False)

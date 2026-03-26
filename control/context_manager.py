@@ -36,7 +36,13 @@ class ContextManager:
             return
         self._initialized = True
         print("=====ContextManager initialized.=====")
-        
+
+        # 任务ID (Task ID) - 初始为 None，需要显式设置
+        self.task_id: Optional[str] = None
+
+        # 状态推送器 (State Pusher)
+        self.state_pusher = None
+
         # 下一个智能体ID (Agent ID)
         self.next_agent_id: int = 0
         
@@ -68,7 +74,7 @@ class ContextManager:
         self.active_subagents: Dict[int, set[str]] = defaultdict(set)
         
         # 固定的subagent以及 default channel
-        self.consistent_subagent_id: Dict[int, str] = defaultdict(set)
+        self.consistent_subagent_id: Dict[int, str] = {}
         
         self.consistentAgent2DefaultChannel: Dict[str, str] = {}
         
@@ -140,6 +146,22 @@ class ContextManager:
         Return the project directory(AUTOMAS).
         """
         return self.project_dir
+
+    def set_task_id(self, task_id: str, dump: bool = True):
+        """
+        设置任务ID。如果不设置，会在首次获取时自动生成。
+        """
+        self.task_id = task_id
+        if dump:
+            self._auto_dump("set_task_id", {"task_id": task_id})
+
+    def get_task_id(self) -> str:
+        """
+        获取任务ID。如果未设置，则自动生成一个。
+        """
+        if self.task_id is None:
+            self.task_id = str(uuid4())[:8]
+        return self.task_id
 
     def set_task_dir(self, task_dir: str, dump: bool = True):
         self.task_dir = task_dir or "default"
@@ -219,11 +241,12 @@ class ContextManager:
         """
         Obtain a new agent ID.
         """
-        if os.getenv("IS_DEBUG_ENABLED", "1") == "1":
-            if not self.is_executing:
-                self.next_agent_id += 1
-            if dump:
-                self._auto_dump("obtain_id", {"next_agent_id": self.next_agent_id})
+        # 无论是否 DEBUG 模式，都需要增加 agent_id（核心功能）
+        if not self.is_executing:
+            self.next_agent_id += 1
+        # 只在 DEBUG 模式下 dump
+        if dump and os.getenv("IS_DEBUG_ENABLED", "0") == "1":
+            self._auto_dump("obtain_id", {"next_agent_id": self.next_agent_id})
         return self.next_agent_id
         
     def set_task_status(self, task_state: PlannedTasks, dump: bool = True):
@@ -370,16 +393,17 @@ class ContextManager:
                     messages.extend([m for m in channel_messages if m.get("role") != "system"])
         
         messages = sorted(messages, key=lambda x: x.get("timestamp", 0))
+        excluded_keys = {"timestamp", "usage", "reasoning_content"}
         if formatted:
             lines = []
             for message in messages:
-                s = ", ".join([f"{k}: {v}" for k, v in message.items() if k != "timestamp" and k != "usage"])
+                s = ", ".join([f"{k}: {v}" for k, v in message.items() if k not in excluded_keys])
                 lines.append(s)
             return "\n".join(lines)
         else:
             new_messages = []
             for message in messages:
-                new_messages.append({k: v for k, v in message.items() if k != "timestamp" and k != "usage"})
+                new_messages.append({k: v for k, v in message.items() if k not in excluded_keys})
             return new_messages
         
     
@@ -387,6 +411,28 @@ class ContextManager:
         """Helper to get current objective and sub-objective indices."""
         idx = self.task_state.next_step
         return idx.objective_index, idx.sub_objective_index
+
+    def set_state_pusher(self, state_pusher):
+        """
+        设置状态推送器
+
+        Args:
+            state_pusher: StatePusher 实例
+        """
+        self.state_pusher = state_pusher
+
+    def _notify_state_change(self, trigger_reason: str):
+        """
+        通知状态变更
+
+        Args:
+            trigger_reason: 触发原因
+        """
+        if self.state_pusher:
+            try:
+                self.state_pusher.push(trigger_reason)
+            except Exception as e:
+                print(f"State push error: {e}")
 
     def add_milestone(self, milestone: str, dump: bool = True):
         """
@@ -397,6 +443,8 @@ class ContextManager:
             task = self.task_state.tasks[obj_idx]
             if 0 <= sub_idx < len(task.objective):
                 task.objective[sub_idx].milestones.append(milestone)
+                # 通知状态变更
+                self._notify_state_change("update_progress")
                 if dump:
                     self._auto_dump("add_milestone", {"milestone": milestone})
 
@@ -436,6 +484,8 @@ class ContextManager:
             self.task_state.is_mission_accomplished = all(t.finished for t in self.task_state.tasks)
         self.is_executing = False
         self.is_planned = False
+        # 通知状态变更
+        self._notify_state_change("agent_completed")
         if dump:
             self._auto_dump("submit_sub_objective", {"status": task_status})
 
@@ -482,22 +532,30 @@ class ContextManager:
         If agent is inactive, raise **ValueError**.
         If channel is not active, this function will **create a new channel** by add_active_subagent_channel.
         """
-        if self.active_subagents.get(agent_id, None) is None:
+        channels = self.active_subagents.get(agent_id)
+        if agent_id not in self.active_subagents or not channels:
             print(f"Agent {agent_id} is not active.")
             raise ValueError(f"Agent {agent_id} is not active.")
         if isinstance(channel, str):
             channel = [channel]
+        sanitized_dialogue = []
+        for m in dialogue:
+            if isinstance(m, dict) and "reasoning_content" in m:
+                m = {k: v for k, v in m.items() if k != "reasoning_content"}
+            sanitized_dialogue.append(m)
         for c in channel:
             if c not in self.dialogue_history.keys():
                 self.dialogue_history[c] = []
                 self.add_active_subagent_channel(agent_id, c, dump=dump)
                 print(f"Add channel: {c} to dialogue history.")
-            self.dialogue_history[c].extend(dialogue)       
+            self.dialogue_history[c].extend(sanitized_dialogue)       
         if dump:
             self._auto_dump("add_dialogue", {"channel": channel})
 
     def record_agent_factory_output(self, output: FactoryOutput, dump: bool = True):
         self.latest_agent_factory_output = output
+        # 通知状态变更
+        self._notify_state_change("agent_created")
         if dump:
             self._auto_dump("record_agent_factory_output", {"role_setting": output.role_setting, "task_specification": output.task_specification})
         
@@ -648,7 +706,10 @@ class ContextManager:
                     current_activate_agent.append(sub_task.agent_id)
                     # res = {r.description: r for r in sub_task.resource_reference}
                     # available_resources.update(res)
-        self.active_subagents = {k: v for k, v in self.active_subagents.items() if k in current_activate_agent}
+        self.active_subagents = defaultdict(
+            set,
+            {k: v for k, v in self.active_subagents.items() if k in current_activate_agent},
+        )
         print(f"=====Active subagents=====: \n {self.active_subagents.keys()}")
         channel_ls = []
         for subagent_id, channels in self.active_subagents.items():
@@ -747,6 +808,8 @@ class ContextManager:
         self.latest_agent_tool_usage = data.get("latest_agent_tool_usage", self.latest_agent_tool_usage)
         self.latest_agent_factory_output = self._restore_factory_output(data.get("latest_agent_factory_output", self.latest_agent_factory_output))
         self.active_qa = data.get("active_qa", self.active_qa) or {}
+        # 加载 task_id，兼容旧 dump 文件
+        self.task_id = data.get("task_id", str(uuid4())[:8])
         os.makedirs(self.get_tmp_dir(), exist_ok=True)
         os.makedirs(self.get_output_dir(), exist_ok=True)
         task_state_data = data.get("task_state")
@@ -761,6 +824,7 @@ class ContextManager:
                 "reason": self.last_dump_reason,
                 "params": self.last_dump_params
             },
+            "task_id": self.task_id,
             "auto_dump_enabled": self.auto_dump_enabled,
             "auto_dump_dir": self.auto_dump_dir,
             "auto_dump_run_dir": self.auto_dump_run_dir,
@@ -788,7 +852,8 @@ class ContextManager:
         }
 
     def _auto_dump(self, reason: Optional[str] = None, params: Optional[Dict[str, Any]] = None):
-        if os.getenv("IS_DEBUG_ENABLED", "1") != "1":
+        # 只在明确开启 DEBUG 模式时才 dump（默认关闭）
+        if os.getenv("IS_DEBUG_ENABLED", "0") != "1":
             return
         if not self.auto_dump_enabled:
             return

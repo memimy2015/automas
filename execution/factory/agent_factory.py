@@ -13,6 +13,7 @@ from typing import Dict, Any
 from miscellaneous.cozeloop_preprocess import agent_factory_process_output
 from miscellaneous.observe import observe
 import os
+from prompt_manager import get_prompt_manager
 
 
 DEFAULT_INSTRUCTION = """
@@ -28,10 +29,10 @@ If there are available resources according to the task background, please refer 
 
 # Task Background
 This is a structured format of the task background, containing every step of the task execution process and some available resources:
-{}
+{task_background}
 # Current Sub-Objective
 This is the current sub-objective that needs to be achieved, you must focus on it and give the role and task specification for the sub-objective in order to help the model to execute the sub-objective successfully:
-{}
+{current_sub_objective}
 
 # Output format
 JSON format
@@ -44,7 +45,8 @@ class AgentFactory():
         self.default_tool_name_list = default_tool_name_list
         self.tool_executer = tool_executer
         self.shell = shell
-        self.messages = [{"role": "system", "content": DEFAULT_INSTRUCTION.format("placeholder", "placeholder")}]
+        pm = get_prompt_manager()
+        self.messages = [{"role": "system", "content": pm.render("agent_factory.system", DEFAULT_INSTRUCTION, None, task_background="placeholder", current_sub_objective="placeholder")}]
         self.messages.append({"role": "user", "content": "Placeholder"})
 
     def create_agent(self, instruction: Dict[str, Any], tool_name_list: list = None) -> Agent:
@@ -67,7 +69,8 @@ class AgentFactory():
             current_subtask_step = self.context_manager.get_subtask_step(self.current_subtask_index, self.current_subtask_step_index)
             formatted_subtask = self.context_manager.get_formatted_subtask(current_subtask, self.current_subtask_index + 1)
             formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, self.current_subtask_index + 1, self.current_subtask_step_index + 1)
-            self.messages[0] = {"role": "system", "content": DEFAULT_INSTRUCTION.format(formatted_subtask, formatted_subtask_step)}
+            pm = get_prompt_manager()
+            self.messages[0] = {"role": "system", "content": pm.render("agent_factory.system", DEFAULT_INSTRUCTION, None, task_background=formatted_subtask, current_sub_objective=formatted_subtask_step)}
             self.messages[1] = {"role": "user", "content": "Now give your suggested role and task specification for prompt of sub-objective."}
             
             

@@ -12,5 +12,5 @@ It supports retrieving information from the entire Internet. If the retrieved in
 ## Script
 Run the web_search script:
 ```bash
-python {PROJECT_DIR}/skills/web-search/scripts/internet_wide_search.py {query}
+python {PROJECT_DIR}/skills/web_search/scripts/internet_wide_search.py {query}
 ```

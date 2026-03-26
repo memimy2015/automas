@@ -59,6 +59,7 @@ def llm_call_process_output(output: tuple) -> dict:
     return {
             "finish_reason": output[0],
             "response": output[1].model_dump(),
+            "reasoning": output[1].reasoning_content,
             "usage": output[2].model_dump(),
         }
     
@@ -85,6 +86,7 @@ def llm_call_json_schema_process_output(output: tuple) -> dict:
     return {
             "finish_reason": output[0],
             "response": output[1].parsed.model_dump() if output[0] != "tool_calls" else output[1].tool_calls[0].function.model_dump(),
+            "reasoning": output[1].reasoning_content,
             "usage": output[2].model_dump(),
         }
 

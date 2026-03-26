@@ -13,6 +13,8 @@ from llm.json_schemas import SubmitMessage
 from uuid import uuid4
 import os
 from miscellaneous.observe import observe
+from config.logger import setup_logger
+from prompt_manager import get_prompt_manager
 
 DEFAULT_SUBMIT_PROMPT = """
 # Role 
@@ -23,7 +25,8 @@ You are an assistant specialized in reporting task execution results, serving ta
   - The name of the currently executing task
   - Task summary
   - Task status (strictly limited to one of four values: "completed", "failed", or "cancelled")
-  - A list of resources created during execution, they must be necessary resources, such as final output files or final valid version of scripts of current task. Do not include files that are only intermediate results, files that can only be utilized by current task or multiple versions of file with the same usage or objective .
+  - A list of resources created during execution, they must be necessary resources, such as final output files or final valid version of scripts of current task. Do not include files that are only intermediate results, files that can only be utilized by current task or multiple versions of file with the same usage or objective.
+  - For resources that are partially completed, you should judge whether to keep it or ignore it.
 - **Constraints**:
   - Task status must strictly match one of the four specified values; custom status values are prohibited
   - The resource list must comprehensively include necessary resources, omitting any unnecessary or intermediate resources. And give their descriptions and URIs.
@@ -42,6 +45,7 @@ Agent_LOG_DIR = os.path.join(AUTOMAS_DIR, "agent_log")
 class Agent:
     def __init__(self, instruction: Dict[str, Any], tool_name_list: list, tool_executer: ToolExecuter, context_manager: ContextManager, shell: PersistentShell=None):
         os.makedirs(Agent_LOG_DIR, exist_ok=True)
+        self.logger = setup_logger("Agent")
         self.instruction = instruction
         self.tool_name_list = tool_name_list
         self.tool_executer = tool_executer 
@@ -129,16 +133,22 @@ class Agent:
                 self._prepare_context()
                 finish_reason, resp_msg, usage = llm_call(messages=self.messages, tools=tools)
                 if finish_reason == "error":
+                    self.logger.error(f"LLM error: agent_id={self.agent_id} subtask={self.task_info.get('subtask_name')} msg={getattr(resp_msg, 'content', '')}")
                     qa_snapshot = list(QA)
+                    error_summary = f"Error when submitting task execution results, error message: {resp_msg.content}"
+                    self.context_manager.submit_sub_objective(error_summary, "failed", {}, dump=True)
                     return resp_msg.content, usage, "llm_error", self.tool_usage, qa_snapshot
                 if finish_reason != "tool_calls":
                     content = resp_msg.content
                     self.append_message({"role": "assistant", "content": content}, usage.model_dump(), channel=self.identity + "_main", dump=True)
-                    self.append_message({"role": "user", "content": DEFAULT_SUBMIT_PROMPT}, usage.model_dump(), channel=self.identity + "_main", dump=True)
+                    pm = get_prompt_manager()
+                    submit_prompt = pm.get("execution_agent.submit_prompt", DEFAULT_SUBMIT_PROMPT)
+                    self.append_message({"role": "user", "content": submit_prompt}, usage.model_dump(), channel=self.identity + "_main", dump=True)
                     try:
                         self._prepare_context()
                         finish_reason, resp_msg, submit_usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Submit")
                         if finish_reason == "error":
+                            self.logger.error(f"LLM submit error: agent_id={self.agent_id} subtask={self.task_info.get('subtask_name')} msg={getattr(resp_msg, 'content', '')}")
                             raise RuntimeError(resp_msg.content)
                         resp_msg = resp_msg.parsed
                         resources = {}
@@ -156,9 +166,10 @@ class Agent:
                         qa_snapshot = list(QA)
                         return content, usage, "success", self.tool_usage, qa_snapshot
                     except Exception as e:
+                        self.logger.error(f"Submit exception: agent_id={self.agent_id} subtask={self.task_info.get('subtask_name')} err={e}")
                         print(f"submit {self.messages[-1]} \n error: {e}")
                         error_summary = f"Error when submitting task execution results, error message: {e}"
-                        self.context_manager.submit_sub_objective(error_summary, "pending", {}, dump=True)
+                        self.context_manager.submit_sub_objective(error_summary, "failed", {}, dump=True)
                         qa_snapshot = list(QA)
                         return content, usage, str(e), self.tool_usage, qa_snapshot
                 self.append_message(resp_msg.model_dump(), usage.model_dump(), channel=self.identity + "_main", dump=True)
