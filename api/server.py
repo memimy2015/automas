@@ -131,31 +131,6 @@ async def broadcast_consumer():
             await asyncio.sleep(0.01)
 
 
-async def input_consumer():
-    """
-    输入消费者
-    处理输入队列中的响应提交
-    """
-    loop = asyncio.get_event_loop()
-    while True:
-        try:
-            # 从队列获取消息（在 executor 中运行避免阻塞）
-            msg = await loop.run_in_executor(None, input_buffer.get_response_queue().get, 0.1)
-
-            if msg:
-                task_id = msg.get("task_id")
-                response = msg.get("response")
-
-                if task_id and response:
-                    print(f"[InputConsumer] Response received for task {task_id}")
-                    # 通知等待的进程（通过另一个队列）
-                    input_buffer.notify_response_received(task_id, response)
-
-        except Exception as e:
-            # 队列为空或出错，短暂休眠
-            await asyncio.sleep(0.01)
-
-
 async def monitor_tasks():
     """定期监控任务状态，清理已完成的任务"""
     while True:
@@ -200,25 +175,19 @@ async def monitor_tasks():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    # 启动时：启动监控任务、广播消费者和输入消费者
+    # 启动时：启动监控任务与广播消费者
     monitor_task = asyncio.create_task(monitor_tasks())
     broadcast_task = asyncio.create_task(broadcast_consumer())
-    input_task = asyncio.create_task(input_consumer())
     yield
     # 关闭时：取消所有任务
     monitor_task.cancel()
     broadcast_task.cancel()
-    input_task.cancel()
     try:
         await monitor_task
     except asyncio.CancelledError:
         pass
     try:
         await broadcast_task
-    except asyncio.CancelledError:
-        pass
-    try:
-        await input_task
     except asyncio.CancelledError:
         pass
 

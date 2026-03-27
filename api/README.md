@@ -14,11 +14,11 @@ Automas Web API 提供了以下功能：
 ## 启动服务
 
 ```bash
-# 方式1：直接运行 server.py
+# 推荐方式：直接运行 server.py（会正确初始化 Windows spawn 所需的 Manager/Queue）
 python api/server.py
 
-# 方式2：通过 app.py 启动（需要在 app.py 中调用 start_server）
-python app.py
+# 可选方式：以模块方式启动（等价于直接运行 server.py）
+python -m api.server
 ```
 
 服务默认在 `http://localhost:8000` 启动。
@@ -76,21 +76,11 @@ python app.py
         "content": "请问PPT需要包含哪些具体内容？"
       }
     ],
-    "plan_body": [
-      {
-        "milestone": "收集AI发展相关资料",
-        "status": "completed",
-        "exec_info": "已完成资料收集"
-      },
-      {
-        "milestone": "生成PPT大纲",
-        "status": "completed",
-        "exec_info": "已完成大纲生成"
-      }
-    ],
+    "plan_body": {
+      "...": "（此处为任务计划结构，详见“数据结构说明”）"
+    },
     "current_subagent": {
-      "role": "PPT生成智能体",
-      "exec_info": "任务已完成"
+      "...": "（此处为当前子智能体信息，详见“数据结构说明”）"
     },
     "summary_body": "任务已完成，成功生成AI发展趋势PPT..."
   }
@@ -192,9 +182,9 @@ ws.onopen = () => {
 };
 
 ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log('收到状态更新:', data);
-  // 更新 UI 显示
+  const state = JSON.parse(event.data);
+  console.log('收到状态更新:', state);
+  // 直接用 state 更新 UI 显示（state 即 {task_id, chat_body, plan_body, current_subagent, summary_body}）
 };
 
 ws.onclose = () => {
@@ -207,13 +197,13 @@ ws.onclose = () => {
 {
   "task_id": "a1b2c3d4",
   "chat_body": [...],
-  "plan_body": [...],
+  "plan_body": {...},
   "current_subagent": {...},
   "summary_body": "..."
 }
 ```
 
-**说明：** WebSocket 推送的消息直接是状态数据（与 `get_state` 请求返回的格式一致），不包含额外的包装层。
+**说明：** WebSocket 推送的消息直接是状态数据（不包含 `is_running/is_completed` 这些包装字段）。任务运行状态/是否等待输入请使用 `GET /api/tasks/{task_id}/status` 查询。
 
 **客户端请求消息：**
 ```javascript
@@ -318,7 +308,7 @@ storage/
    ↓
 4. 接收状态更新，渲染到界面
    ↓
-5. 如果收到 call_user 触发（需要用户输入）
+5. 如果 `GET /api/tasks/{task_id}/status` 显示 `waiting_for_input=true`
    ↓
 6. 显示输入框，用户输入后调用 POST /api/tasks/{task_id}/input
    ↓
@@ -388,8 +378,8 @@ class AutomasClient {
   connectWebSocket(taskId, onMessage) {
     this.ws = new WebSocket(`ws://localhost:8000/ws/${taskId}`);
     this.ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      onMessage(data);
+      const state = JSON.parse(event.data);
+      onMessage(state);
     };
     return this.ws;
   }
@@ -403,20 +393,16 @@ async function startTask() {
   const { task_id } = await client.createTask('生成一份周报PPT');
   
   // 2. 连接 WebSocket
-  client.connectWebSocket(task_id, (data) => {
-    console.log('状态更新:', data);
-    
-    // 检查是否需要用户输入
-    if (data.trigger_reason === 'call_user') {
-      showInputDialog(data.state);
+  client.connectWebSocket(task_id, async (state) => {
+    console.log('状态更新:', state);
+    updateUI(state);
+
+    const status = await client.getStatus(task_id);
+    if (status.waiting_for_input) {
+      showInputDialog(status.pending_query);
     }
-    
-    // 更新界面
-    updateUI(data.state);
-    
-    // 检查任务是否完成
-    if (!data.is_running && data.is_completed) {
-      console.log('任务已完成');
+    if (status.is_completed) {
+      console.log('任务进程已结束');
     }
   });
 }
@@ -449,16 +435,11 @@ async function loadHistoricalTask(taskId) {
 
 ### plan_body
 
-任务计划数组，每个里程碑包含：
-- `milestone`: 里程碑描述
-- `status`: 状态（pending/in_progress/completed）
-- `exec_info`: 执行信息
+任务计划结构来自 `ContextManager.task_state` 的抽取结果，包含 `tasks/next_step/is_mission_accomplished/overall_goal` 等字段，具体字段以接口返回为准。
 
 ### current_subagent
 
-当前正在执行的子智能体信息：
-- `role`: 智能体角色名称
-- `exec_info`: 当前执行状态描述
+当前正在执行的子智能体信息来自 `latest_agent_factory_output` 与当前 step 的 milestones 抽取结果，具体字段以接口返回为准。
 
 ### summary_body
 
@@ -510,13 +491,11 @@ python api/server.py
 
 ### 混合模式
 
-也可以通过 app.py 启动 Web 服务：
+当前实现要求先初始化 `multiprocessing.Manager()` 及其队列（用于 Windows spawn 下跨进程通信）。因此建议使用下列任一方式启动：
 
-```python
-# 在 app.py 末尾添加
-from api.server import app
-import uvicorn
-uvicorn.run(app, host="0.0.0.0", port=8000)
+```bash
+python api/server.py
+python -m api.server
 ```
 
 ## 错误处理
