@@ -195,4 +195,5 @@ testcase_results/
 output/
 traces/
 pdf2img.py
-
+storage/tasks/
+tmp_evaluate/

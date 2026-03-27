@@ -10,10 +10,14 @@ from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Optional, Tuple
 from uuid import uuid4
 
+from config.logger import setup_logger
+
 
 _NAME_SAFE_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 _WIN_ABS_RE = re.compile(r"^[a-zA-Z]:[\\/]")
 _WIN_UNC_RE = re.compile(r"^\\\\")
+
+logger = setup_logger("PromptManager")
 
 
 def _utc_now_iso() -> str:
@@ -76,6 +80,7 @@ class PromptManager:
         self.prompts_dir = self.root_dir / "prompts"
         self.registry_path = self.root_dir / "registry.json"
         self._lock = threading.RLock()
+        self._warned_default_fallback: set[str] = set()
         self.prompts_dir.mkdir(parents=True, exist_ok=True)
         if not self.registry_path.exists():
             self._write_registry({"schema_version": 1, "prompts": {}})
@@ -235,6 +240,14 @@ class PromptManager:
         if not path:
             if default is None:
                 raise KeyError(f"prompt not found and no default provided: {prompt_name}")
+            if prompt_name not in self._warned_default_fallback:
+                self._warned_default_fallback.add(prompt_name)
+                logger.warning(
+                    "Prompt fallback to default: name=%s version=%s store=%s",
+                    prompt_name,
+                    version or "active",
+                    str(self.root_dir),
+                )
             return default
         return path.read_text(encoding="utf-8")
 
@@ -290,4 +303,3 @@ def get_prompt_manager() -> PromptManager:
         _maybe_migrate_legacy_store(root)
         _DEFAULT_PM = PromptManager(root_dir=root)
     return _DEFAULT_PM
-
