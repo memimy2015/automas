@@ -70,6 +70,8 @@ class Notifier:
         msg = get_input("====Notification====\n" + notification_msg + "\n")
         self.context_manager.add_dialogue(invoker_agent_id, out_channel, [{"role": "user", "content": msg} | {"timestamp": datetime.now().timestamp()}])
         print("====Notification END====")
+        if hasattr(self.context_manager, '_notify_state_change'):
+            self.context_manager._notify_state_change("get_user_response")
         return msg
         
     
