@@ -263,11 +263,13 @@ def get_task_state(task_id: str):
     is_really_completed = StateStorage.is_task_really_completed(task_id)
     process = running_tasks.get(task_id)
     is_running = process is not None and process.is_alive()
+    waiting_for_input = input_buffer.has_pending(task_id)
     return {
         "task_id": task_id,
         "is_running": is_running,
         "is_completed": is_completed,
         "is_really_completed": is_really_completed,
+        "waiting_for_input": waiting_for_input,
         "state": state
     }
 
@@ -293,7 +295,7 @@ def get_task_status(task_id: str):
     is_running = process is not None and process.is_alive()
 
     # 检查是否有等待中的问题
-    pending_query = input_buffer.get_pending_query(task_id)
+    waiting_for_input = input_buffer.has_pending(task_id)
 
     # 检查任务完成状态
     is_completed = StateStorage.is_task_completed(task_id)
@@ -304,8 +306,7 @@ def get_task_status(task_id: str):
         "is_running": is_running,
         "is_completed": is_completed,
         "is_really_completed": is_really_completed,
-        "waiting_for_input": pending_query is not None,
-        "pending_query": pending_query
+        "waiting_for_input": waiting_for_input,
     }
 
 
