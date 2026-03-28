@@ -348,6 +348,34 @@ The Python session maintains state across commands. The `browser` object provide
 - `browser.back()` - Go back in history
 - `browser.wait(seconds)` - Sleep/pause execution
 
+### Extract Data
+
+For simple data extraction, you can use cli command in previous content. However, when you come across data extraction task that failed for many times, you can use the following method:
+
+**Key Strategy**: Use vision to extract data that cannot be extracted by regex or other rules.
+
+#### Practice
+
+```bash
+browser-use screenshot path.png           # Save screenshot to file, filename can be customized
+```
+
+Then you must read/load this screenshot file to extract the data you want.
+
+If you find that the screenshot file doesn't contain the data you want or it does not capture enough content of the page, you can:
+1. Take a full page screenshot to capture more content.
+```bash
+browser-use screenshot --full path.png    # Full page screenshot
+```
+
+2. Scroll down or up and then take a screenshot to capture more content.
+```bash
+browser-use scroll down                   # Scroll down, use --amount to specify the amount of pixels to scroll.
+browser-use scroll up                     # Scroll up, use --amount to specify the amount of pixels to scroll.
+```
+
+
+
 ### Session Management
 
 ```bash
@@ -389,12 +417,6 @@ Each Chrome profile has its own cookies, history, and logged-in sessions. Choosi
 browser-use server status                 # Check if server is running
 browser-use server stop                   # Stop server
 browser-use server logs                   # View server logs
-```
-
-### Setup
-
-```bash
-browser-use install                       # Install Chromium and system dependencies
 ```
 
 ## Global Options
