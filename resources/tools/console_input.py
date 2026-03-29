@@ -30,7 +30,7 @@ def get_input(prompt: str) -> str:
         # 注意：prompt 中包含了 Agent 的问题，但 InputBuffer 已经通过 Notifier 注册了
         # 使用 api.input_buffer 中的全局函数（在子进程中通过 set_queue 设置了队列）
         from api.input_buffer import wait_for_response
-        return wait_for_response(task_id, timeout=300)
+        return wait_for_response(task_id, timeout=600)
 
     # 命令行模式（原有逻辑）
     if _HAS_PROMPT_TOOLKIT:

@@ -14,6 +14,7 @@ Windows 上 spawn 模式下必须使用 Manager 来共享队列
 
 import multiprocessing
 import threading
+import random
 import time
 from typing import Dict, Optional
 
@@ -194,8 +195,11 @@ class InputBuffer:
                     print(f"[InputBuffer] Response received for task {task_id}")
                     return response
                 else:
-                    # 不是当前任务的响应，忽略
-                    pass
+                    try:
+                        global_queue.put(msg)
+                    except Exception:
+                        pass
+                    time.sleep(random.uniform(0.01, 0.05))
             except:
                 # 队列为空，继续等待
                 continue
@@ -286,13 +290,13 @@ def register_query(task_id: str, query: str) -> None:
     print(f"[InputBuffer] Query registration sent for task {task_id}: {query[:50]}...")
 
 
-def wait_for_response(task_id: str, timeout: Optional[int] = 300) -> str:
+def wait_for_response(task_id: str, timeout: Optional[int] = 600) -> str:
     """
     全局函数：阻塞等待用户响应（在子进程中使用）
 
     Args:
         task_id: 任务ID
-        timeout: 超时时间（秒），默认5分钟
+        timeout: 超时时间（秒），默认10分钟
 
     Returns:
         用户响应内容
@@ -323,8 +327,11 @@ def wait_for_response(task_id: str, timeout: Optional[int] = 300) -> str:
                 print(f"[InputBuffer] Response received for task {task_id}")
                 return response
             else:
-                # 不是当前任务的响应，忽略
-                pass
+                try:
+                    global_queue.put(msg)
+                except Exception:
+                    pass
+                time.sleep(random.uniform(0.01, 0.05))
         except:
             # 队列为空，继续等待
             continue

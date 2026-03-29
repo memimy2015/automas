@@ -19,8 +19,8 @@ class ResourceReference(BaseModel):
     type: Literal["from_user", "from_memorybase", "from_agent"] = Field(description="资源的来源类型", required=True, default="from_user")
 
 class ClaimerSchema(BaseModel):
-    need_more_info: bool = Field(default=False, description="是否需要更多信息")
-    contents: list[ProactiveQuery] = Field(description="为了补充不足的信息而用户提出的问题列表", default_factory=list)
+    need_more_info: bool = Field(default=False, description="是否需要更多信息，也是允许与用户交互的开关")
+    contents: list[ProactiveQuery] = Field(description="为了补充不足的信息而向用户提出的问题列表，或者是得到用户的认可的尝试", default_factory=list)
     refined_objective: str = Field(description="用户对任务的完善描述", default="")
     resource_reference: list[ResourceReference] = Field(description="用户对任务的完善描述的资源引用", default_factory=list)
 

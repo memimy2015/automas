@@ -3,13 +3,19 @@
   "prompts": {
     "planner.system_latest_instruction": {
       "safe_name": "planner.system_latest_instruction",
-      "active_version": "20260325_055240_189954_683d189c",
+      "active_version": "20260327_104552_201848_972c0bcf",
       "versions": {
         "20260325_055240_189954_683d189c": {
           "uri": "prompts/planner.system_latest_instruction/20260325_055240_189954_683d189c.txt",
           "created_at": "2026-03-25T05:52:40Z",
           "note": "bootstrap",
           "sha256": "4f507e4857cbf9af48fa77af266605cb263fbc8d6f46f1dcfdfd835996252a78"
+        },
+        "20260327_104552_201848_972c0bcf": {
+          "uri": "prompts/planner.system_latest_instruction/20260327_104552_201848_972c0bcf.txt",
+          "created_at": "2026-03-27T10:45:52Z",
+          "note": "增加思考规则",
+          "sha256": "83249b6860a24b36110ee71d907b40639dfd6f6e663debd735b257e3d325dc71"
         }
       }
     },
@@ -63,7 +69,7 @@
     },
     "claimer.system": {
       "safe_name": "claimer.system",
-      "active_version": "20260325_114334_400433_59f60a1f",
+      "active_version": "20260327_104237_862281_2b637f3c",
       "versions": {
         "20260325_055240_410861_3bb4ab23": {
           "uri": "prompts/claimer.system/20260325_055240_410861_3bb4ab23.txt",
@@ -76,24 +82,48 @@
           "created_at": "2026-03-25T11:43:34Z",
           "note": "claimer 调参实验, 尝试让claimer问的更加透彻",
           "sha256": "250b9efce5706a8a7574d6bdc25c167378dd106a4c6b119903fea90247e3c310"
+        },
+        "20260327_091006_885318_f3c8da84": {
+          "uri": "prompts/claimer.system/20260327_091006_885318_f3c8da84.txt",
+          "created_at": "2026-03-27T09:10:06Z",
+          "note": "claimer 调参实验, 尝试让claimer问的更加透彻, 并且会在确认前询问用户许可",
+          "sha256": "8a318c5201021ab237eddc49ae0e37e054ef9d8a44f433cce1e57eff25a54a74"
+        },
+        "20260327_091011_048815_deba87b7": {
+          "uri": "prompts/claimer.system/20260327_091011_048815_deba87b7.txt",
+          "created_at": "2026-03-27T09:10:11Z",
+          "note": "claimer 调参实验, 尝试让claimer问的更加透彻, 并且会在确认前询问用户许可",
+          "sha256": "8a318c5201021ab237eddc49ae0e37e054ef9d8a44f433cce1e57eff25a54a74"
+        },
+        "20260327_104237_862281_2b637f3c": {
+          "uri": "prompts/claimer.system/20260327_104237_862281_2b637f3c.txt",
+          "created_at": "2026-03-27T10:42:37Z",
+          "note": "移除用户许可，增加思考规则",
+          "sha256": "b38123f4b7ae7bb24227817b1cfdd26f32504c959c95ddf1d85692e014a3f040"
         }
       }
     },
     "summarizer.system": {
       "safe_name": "summarizer.system",
-      "active_version": "20260325_055240_434335_ec07ef24",
+      "active_version": "20260327_104656_499919_36024088",
       "versions": {
         "20260325_055240_434335_ec07ef24": {
           "uri": "prompts/summarizer.system/20260325_055240_434335_ec07ef24.txt",
           "created_at": "2026-03-25T05:52:40Z",
           "note": "bootstrap",
           "sha256": "9559b6f2fb72ced00b0aeb823e86b1c5d2472722ac048e1d9ffa9b10fab1fc2d"
+        },
+        "20260327_104656_499919_36024088": {
+          "uri": "prompts/summarizer.system/20260327_104656_499919_36024088.txt",
+          "created_at": "2026-03-27T10:46:56Z",
+          "note": "增加思考规则",
+          "sha256": "5a1b13ba8c96d320bd6f7c99525ae86185278ed006629e73a3269a102dda8760"
         }
       }
     },
     "agent_factory.system": {
       "safe_name": "agent_factory.system",
-      "active_version": "20260325_062615_471219_f8265434",
+      "active_version": "20260327_104339_570125_40219fc4",
       "versions": {
         "20260325_055240_462260_0d656a89": {
           "uri": "prompts/agent_factory.system/20260325_055240_462260_0d656a89.txt",
@@ -106,18 +136,30 @@
           "created_at": "2026-03-25T06:26:15Z",
           "note": "migrate to named placeholders",
           "sha256": "6727269330c0f5e02c6bbaec3b25131fcdf1ef509d7493313d8a29a549dd3319"
+        },
+        "20260327_104339_570125_40219fc4": {
+          "uri": "prompts/agent_factory.system/20260327_104339_570125_40219fc4.txt",
+          "created_at": "2026-03-27T10:43:39Z",
+          "note": "增加思考规则",
+          "sha256": "720ef2865f87d2d49a86140536b9a2afc5decd10f9936fefb6fa09169bb32115"
         }
       }
     },
     "execution_agent.system_template": {
       "safe_name": "execution_agent.system_template",
-      "active_version": "20260325_055240_547910_b37892ec",
+      "active_version": "20260327_104449_295968_7e9853af",
       "versions": {
         "20260325_055240_547910_b37892ec": {
           "uri": "prompts/execution_agent.system_template/20260325_055240_547910_b37892ec.txt",
           "created_at": "2026-03-25T05:52:40Z",
           "note": "bootstrap",
           "sha256": "ff81c3424a56d38619a8428a993645c65fec46c0e11d4d9aa5a87ab0743530cf"
+        },
+        "20260327_104449_295968_7e9853af": {
+          "uri": "prompts/execution_agent.system_template/20260327_104449_295968_7e9853af.txt",
+          "created_at": "2026-03-27T10:44:49Z",
+          "note": "增加思考规则",
+          "sha256": "c2c01af38582d4ba991fa1d793df869bc7846d7ca4f4ba49d12b98713066e203"
         }
       }
     },
