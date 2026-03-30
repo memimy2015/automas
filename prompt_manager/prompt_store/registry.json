@@ -33,13 +33,19 @@
     },
     "planner.schedule_continue": {
       "safe_name": "planner.schedule_continue",
-      "active_version": "20260325_055240_276030_e9c09873",
+      "active_version": "20260330_112605_267926_c0dcda2b",
       "versions": {
         "20260325_055240_276030_e9c09873": {
           "uri": "prompts/planner.schedule_continue/20260325_055240_276030_e9c09873.txt",
           "created_at": "2026-03-25T05:52:40Z",
           "note": "bootstrap",
           "sha256": "1a5a235078851c892fcb5f8b10c7ba1eb08c93a2a07a4b89b0ee64756c3eac59"
+        },
+        "20260330_112605_267926_c0dcda2b": {
+          "uri": "prompts/planner.schedule_continue/20260330_112605_267926_c0dcda2b.txt",
+          "created_at": "2026-03-30T11:26:05Z",
+          "note": "提示词禁用工具",
+          "sha256": "16d5eec3caf85af431206a42baa26b07adf4591928acb2476a45ccda0a2b3335"
         }
       }
     },
