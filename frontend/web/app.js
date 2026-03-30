@@ -35,6 +35,138 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;")
 }
 
+function safeLinkHref(href) {
+  const raw = String(href || "").trim()
+  const lowered = raw.toLowerCase()
+  if (lowered.startsWith("javascript:") || lowered.startsWith("data:")) return ""
+  return raw
+}
+
+function formatInlineMarkdown(text) {
+  let s = escapeHtml(text)
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
+    const href = safeLinkHref(url)
+    if (!href) return label
+    return `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer noopener">${label}</a>`
+  })
+  s = s.replace(/`([^`]+)`/g, (_, code) => `<code>${code}</code>`)
+  s = s.replace(/\*\*([^*]+)\*\*/g, (_, bold) => `<strong>${bold}</strong>`)
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, (_, pre, ital) => `${pre}<em>${ital}</em>`)
+  return s
+}
+
+function renderMarkdown(md) {
+  const src = String(md || "")
+  const lines = src.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n")
+  const out = []
+  let inCode = false
+  let codeLang = ""
+  let codeLines = []
+  let listType = null
+  const isTableSep = (line) => {
+    const t = String(line || "").trim()
+    if (!t) return false
+    let s = t
+    if (s.startsWith("|")) s = s.slice(1)
+    if (s.endsWith("|")) s = s.slice(0, -1)
+    const parts = s.split("|").map((x) => x.trim())
+    if (!parts.length) return false
+    return parts.every((cell) => /^:?-{3,}:?$/.test(cell))
+  }
+  const parseTableRow = (line) => {
+    let s = String(line || "").trim()
+    if (s.startsWith("|")) s = s.slice(1)
+    if (s.endsWith("|")) s = s.slice(0, -1)
+    return s.split("|").map((x) => x.trim())
+  }
+  const closeList = () => {
+    if (!listType) return
+    out.push(listType === "ol" ? "</ol>" : "</ul>")
+    listType = null
+  }
+  const openList = (t) => {
+    if (listType === t) return
+    closeList()
+    listType = t
+    out.push(t === "ol" ? "<ol>" : "<ul>")
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? ""
+    const fence = line.match(/^\s*```(\w+)?\s*$/)
+    if (fence) {
+      if (!inCode) {
+        closeList()
+        inCode = true
+        codeLang = fence[1] || ""
+        codeLines = []
+      } else {
+        const code = escapeHtml(codeLines.join("\n"))
+        out.push(`<pre><code${codeLang ? ` class="lang-${escapeHtml(codeLang)}"` : ""}>${code}</code></pre>`)
+        inCode = false
+        codeLang = ""
+        codeLines = []
+      }
+      continue
+    }
+    if (inCode) {
+      codeLines.push(line)
+      continue
+    }
+
+    if (String(line).trim() === "") {
+      closeList()
+      continue
+    }
+
+    if (String(line).includes("|") && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      closeList()
+      const headerCells = parseTableRow(line)
+      const rows = []
+      i += 2
+      for (; i < lines.length; i++) {
+        const rowLine = lines[i] ?? ""
+        if (String(rowLine).trim() === "") break
+        if (!String(rowLine).includes("|")) break
+        rows.push(parseTableRow(rowLine))
+      }
+      i -= 1
+      const thead = `<thead><tr>${headerCells.map((c) => `<th>${formatInlineMarkdown(c)}</th>`).join("")}</tr></thead>`
+      const tbody = `<tbody>${rows
+        .map((r) => `<tr>${r.map((c) => `<td>${formatInlineMarkdown(c)}</td>`).join("")}</tr>`)
+        .join("")}</tbody>`
+      out.push(`<table>${thead}${tbody}</table>`)
+      continue
+    }
+
+    const h = line.match(/^(#{1,3})\s+(.*)$/)
+    if (h) {
+      closeList()
+      const level = h[1].length
+      out.push(`<h${level}>${formatInlineMarkdown(h[2])}</h${level}>`)
+      continue
+    }
+
+    const ul = line.match(/^\s*[-*+]\s+(.*)$/)
+    if (ul) {
+      openList("ul")
+      out.push(`<li>${formatInlineMarkdown(ul[1])}</li>`)
+      continue
+    }
+    const ol = line.match(/^\s*\d+\.\s+(.*)$/)
+    if (ol) {
+      openList("ol")
+      out.push(`<li>${formatInlineMarkdown(ol[1])}</li>`)
+      continue
+    }
+
+    closeList()
+    out.push(`<p>${formatInlineMarkdown(line)}</p>`)
+  }
+  closeList()
+  return out.join("\n")
+}
+
 function nowClock() {
   const d = new Date()
   const pad = (n) => String(n).padStart(2, "0")
@@ -284,7 +416,13 @@ function renderMeta(meta) {
 }
 
 function renderSummary(summary) {
-  setText("summaryText", isBlank(summary) ? "暂无总结" : summary)
+  const el = $("summaryText")
+  if (!el) return
+  if (isBlank(summary)) {
+    el.textContent = "暂无总结"
+    return
+  }
+  el.innerHTML = renderMarkdown(summary)
 }
 
 function isEmptyObject(obj) {
