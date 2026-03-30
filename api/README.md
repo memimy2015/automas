@@ -60,6 +60,7 @@ python -m api.server
   "is_running": false,
   "is_completed": true,
   "is_really_completed": true,
+  "waiting_for_input": false,
   "state": {
     "task_id": "a1b2c3d4",
     "chat_body": [
@@ -77,10 +78,10 @@ python -m api.server
       }
     ],
     "plan_body": {
-      "...": "（此处为任务计划结构，详见“数据结构说明”）"
+      "...": "（此处为任务计划结构，详见“state_data.json”）"
     },
     "current_subagent": {
-      "...": "（此处为当前子智能体信息，详见“数据结构说明”）"
+      "...": "（此处为当前子智能体信息，详见“state_data.json”）"
     },
     "summary_body": "任务已完成，成功生成AI发展趋势PPT..."
   }
@@ -91,6 +92,7 @@ python -m api.server
 - `is_running`: 任务是否正在运行
 - `is_completed`: 任务进程是否已结束（已保存到文件系统）
 - `is_really_completed`: 任务是否真正完成（summarizer 已生成总结，summary_body 非空）
+- `waiting_for_input`: 系统是否等待用户输入
 - `state`: 完整的任务状态数据
 
 **注意：** `is_completed` 表示进程已结束，但 `is_really_completed` 表示 summarizer 已生成总结。在 summarizer 运行期间，`is_completed` 可能为 true 但 `is_really_completed` 为 false。
