@@ -58,3 +58,22 @@
   - 影响范围：`llm/llm.py` 的 LLM 调用  
   - 默认值：`5`
 
+- AUTOMAS_API_BASE=http://127.0.0.1:8000
+  - 作用：Automas API Base URL  
+
+- FEISHU_APP_ID
+  - 作用：飞书应用 ID  
+  - 影响范围：`channels/feishu.py` 的飞书 API 调用初始化  
+- FEISHU_APP_SECRET
+  - 作用：飞书应用密钥  
+  - 影响范围：`channels/feishu.py` 的飞书 API 调用初始化  
+- FEISHU_POLL_INTERVAL_SECONDS=5
+  - 作用：飞书轮询间隔（秒）  
+  - 影响范围：`channels/feishu.py` 的飞书 API 调用初始化  
+- FEISHU_SESSION_PATH
+  - 作用：飞书会话存储路径  
+  - 影响范围：`channels/feishu.py` 的飞书会话管理  
+- PYTHONHTTPSVERIFY=0
+  - 作用：禁用 Python HTTPS 验证  
+  - 影响范围：`channels/feishu.py` 的飞书 API 调用初始化  
+  - 默认值：`0`
