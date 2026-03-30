@@ -14,6 +14,7 @@ from miscellaneous.cozeloop_preprocess import agent_factory_process_output
 from miscellaneous.observe import observe
 import os
 from prompt_manager import get_prompt_manager
+from datetime import datetime
 
 
 DEFAULT_INSTRUCTION = """
@@ -46,7 +47,7 @@ class AgentFactory():
         self.tool_executer = tool_executer
         self.shell = shell
         pm = get_prompt_manager()
-        self.messages = [{"role": "system", "content": pm.render("agent_factory.system", DEFAULT_INSTRUCTION, None, task_background="placeholder", current_sub_objective="placeholder")}]
+        self.messages = [{"role": "system", "content": pm.render("agent_factory.system", DEFAULT_INSTRUCTION, None, task_background="placeholder", current_sub_objective="placeholder", current_date=datetime.now().strftime("%Y年%m月%d日"))}]
         self.messages.append({"role": "user", "content": "Placeholder"})
 
     def create_agent(self, instruction: Dict[str, Any], tool_name_list: list = None) -> Agent:
@@ -69,8 +70,9 @@ class AgentFactory():
             current_subtask_step = self.context_manager.get_subtask_step(self.current_subtask_index, self.current_subtask_step_index)
             formatted_subtask = self.context_manager.get_formatted_subtask(current_subtask, self.current_subtask_index + 1)
             formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, self.current_subtask_index + 1, self.current_subtask_step_index + 1)
+            formatted_plan = self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0])
             pm = get_prompt_manager()
-            self.messages[0] = {"role": "system", "content": pm.render("agent_factory.system", DEFAULT_INSTRUCTION, None, task_background=formatted_subtask, current_sub_objective=formatted_subtask_step)}
+            self.messages[0] = {"role": "system", "content": pm.render("agent_factory.system", DEFAULT_INSTRUCTION, None, task_background=formatted_plan, current_sub_objective=formatted_subtask_step, current_date=datetime.now().strftime("%Y年%m月%d日"))}
             self.messages[1] = {"role": "user", "content": "Now give your suggested role and task specification for prompt of sub-objective."}
             
             

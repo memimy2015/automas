@@ -87,6 +87,7 @@ class ContextManager:
         self.latest_agent_id: Optional[int] = None
         self.latest_agent_tool_usage: Optional[Dict[str, Any]] = None
         self.latest_agent_factory_output: Optional[FactoryOutput] = None
+        self.latest_agent_factory_indices: Optional[Tuple[int, int]] = None
         self.active_qa: Dict[str, List[Dict[str, Any]]] = {}
         self.loaded_from_dump: bool = False
         self.pending_tool_call_channels: set[str] = set()
@@ -553,6 +554,7 @@ class ContextManager:
             self._auto_dump("add_dialogue", {"channel": channel})
 
     def record_agent_factory_output(self, output: FactoryOutput, dump: bool = True):
+        self.latest_agent_factory_indices = self._get_current_indices()
         self.latest_agent_factory_output = output
         # 通知状态变更
         self._notify_state_change("agent_created")

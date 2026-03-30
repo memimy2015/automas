@@ -857,6 +857,7 @@ class PlannerAgent:
             TaskList=self.context_manager.get_formatted_plan(self.context_manager.get_task_status()[0]),
             TMP_DIR=self.context_manager.get_tmp_dir(),
             OUTPUT_DIR=self.context_manager.get_output_dir(),
+            current_date=datetime.now().strftime("%Y年%m月%d日"),
         )
         # Planner的system prompt根据context_manager的信息实时构造，不允许加入channel！
         self.messages.clear()

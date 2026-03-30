@@ -15,7 +15,7 @@ class ResourceType(Enum):
 
 class ResourceReference(BaseModel):
     description: str = Field(..., description="资源的描述", required=True)
-    URI: str = Field(..., description="资源的URI", required=True)
+    URI: str = Field(..., description="资源的URI, 需要是文件路径或者网页链接。如果你发现没办法提供这两类，那么说明这个资源应该不存在，不允许设置这个资源", required=True)
     type: Literal["from_user", "from_memorybase", "from_agent"] = Field(description="资源的来源类型", required=True, default="from_user")
 
 class ClaimerSchema(BaseModel):

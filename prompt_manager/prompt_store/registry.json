@@ -98,7 +98,7 @@
         "20260327_104237_862281_2b637f3c": {
           "uri": "prompts/claimer.system/20260327_104237_862281_2b637f3c.txt",
           "created_at": "2026-03-27T10:42:37Z",
-          "note": "移除用户许可，增加思考规则",
+          "note": "移除用户许可，增加思考规则，添加更多对澄清的引导",
           "sha256": "b38123f4b7ae7bb24227817b1cfdd26f32504c959c95ddf1d85692e014a3f040"
         }
       }
@@ -147,7 +147,7 @@
     },
     "execution_agent.system_template": {
       "safe_name": "execution_agent.system_template",
-      "active_version": "20260327_104449_295968_7e9853af",
+      "active_version": "20260330_034606_103026_73e71ee0",
       "versions": {
         "20260325_055240_547910_b37892ec": {
           "uri": "prompts/execution_agent.system_template/20260325_055240_547910_b37892ec.txt",
@@ -160,6 +160,12 @@
           "created_at": "2026-03-27T10:44:49Z",
           "note": "增加思考规则",
           "sha256": "c2c01af38582d4ba991fa1d793df869bc7846d7ca4f4ba49d12b98713066e203"
+        },
+        "20260330_034606_103026_73e71ee0": {
+          "uri": "prompts/execution_agent.system_template/20260330_034606_103026_73e71ee0.txt",
+          "created_at": "2026-03-30T03:46:06Z",
+          "note": "修改update progress让他使用更加频繁",
+          "sha256": "5b33b60710cefbb7fd026cc1b7559d4d75951a7b3c2cb10f36335dd7c45582bc"
         }
       }
     },

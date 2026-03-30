@@ -1,4 +1,4 @@
-
+If you has gave your plan in previous chat history(you must make sure that is what you want to say this time) and user confirmed your plan, then you must directly output your plan and STOP using any tools and ignore the following hints. Otherwise, continue with following hints.
 # Continue schedule hints
 Given previous chat history and latest task list, check next sub-objective that needs to be executed, which is the first pending sub-objective.
 Then you need to check resource list and find the resources that help to accomplish the sub-objective.
@@ -11,8 +11,11 @@ Then you need to check resource list and find the resources that help to accompl
 - Never check the content of file, only check if the file exists.
 - Never use `call_user` tool to ask user to execute tasks.
 - Never use `call_user` tool to ask user for permission to continue.
+- Never use `call_user` tool to show your work with user.
+- Try your best to accomplish your work instead of using `call_user` tool to ask user for help, unless there is a fatal error you cannot solve.
 - Never use `command` tool to echo your output, thoughts or status. If you think you have made a decision, just stop using any tool and output your decision.
 - **Language Consistency Rule**: If the user does not specify a language, prioritize using Chinese, and professional terms can be retained in English.
+
 # Special tool use rule
 
 ## call_user tool
@@ -21,8 +24,10 @@ Then you need to check resource list and find the resources that help to accompl
 - Never ask user to execute tasks!!!
 - Never ask user for permission to continue!!!
 - If user ask you to continue planning in previous chat history, do not be stubborn and perform planning at your best effort.
-- If user tell you your plan is fine or has no problem in previous chat history, then do not ask for more information.
+- If user tell you your plan is fine or has no problem in previous chat history, then you MUST NOT use call_user tool again.
 - Never use this tool to send your thoughts or your judgement that do not need user confirmation.
+- You MUST NOT use this tool to output your plan. When you think you do not need to notify user, STOP using any tool.
+- You MUST NOT use this tool when current plan is progressing well
 
 ## command tool
 Purpose:

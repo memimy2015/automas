@@ -50,7 +50,7 @@ class ClaimerAgent:
         self.logger = setup_logger("ClaimerAgent")
         # prompt = DEFAULT_INSTRUCTION.format(access_knowledgeDB())
         pm = get_prompt_manager()
-        prompt = pm.render("claimer.system", DEFAULT_INSTRUCTION, None, PROJECT_DIR=context_manager.get_project_dir())
+        prompt = pm.render("claimer.system", DEFAULT_INSTRUCTION, None, PROJECT_DIR=context_manager.get_project_dir(), current_date=datetime.now().strftime("%Y年%m月%d日"))
         self.notifier = notifier
         self.context_manager = context_manager
         agent_id, channel = self.context_manager.get_consistent_agent_identity("Claimer")

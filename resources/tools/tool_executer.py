@@ -99,13 +99,13 @@ class ToolExecuter:
             "type": "function",
             "function": {
                 "name": "update_progress",
-                "description": "记录可验证的里程碑/状态变化（产物生成、关键结论、错误与重试、阻塞原因、外部依赖完成等）。不要记录中间推理、草稿、闲聊或长篇过程描述。",
+                "description": "记录可验证的，对于用户有意义的，执行记录/里程碑/状态变化（包括但不限于行为、决策、产物生成、关键结论、错误与重试、阻塞原因、外部依赖完成等）。不要记录中间推理、草稿、闲聊或长篇过程描述。",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "info": {
                             "type": "string",
-                            "description": "一条简短、可验证的事实记录：做了什么→结果是什么；必要时附路径/错误摘要/错误码。避免敏感信息与长段落。"
+                            "description": "一条简短、可验证的事实记录：要做或者做了什么，如果有的话，还要简单说明结果是什么！；必要时附路径/错误摘要/错误码。避免敏感信息与长段落。"
                         }
                     },
                     "required": ["info"]
@@ -117,7 +117,7 @@ class ToolExecuter:
             "type": "function",
             "function": {
                 "name": "call_user",
-                "description": "向用户发起一次交互请求，仅在必须由用户提供信息/确认关键决策/完成外部验证时使用。不要用它发送中间推理、草稿或进度汇报。",
+                "description": "向用户发起一次交互请求，仅在必须由用户提供信息/完成外部验证时使用。不要用它发送中间推理、草稿或进度汇报，更不要用来询问skill和tool能不能使用！。",
                 "parameters": {
                     "type": "object",
                     "properties": {

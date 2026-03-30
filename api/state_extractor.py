@@ -159,8 +159,12 @@ class StateExtractor:
 
         # 获取当前 step 的 milestones
         task_state = context_manager.task_state
-        obj_idx = task_state.next_step.objective_index
-        sub_idx = task_state.next_step.sub_objective_index
+        indices = getattr(context_manager, "latest_agent_factory_indices", None)
+        if indices:
+            obj_idx, sub_idx = indices
+        else:
+            obj_idx = task_state.next_step.objective_index
+            sub_idx = task_state.next_step.sub_objective_index
 
         exec_info = []
         if obj_idx < len(task_state.tasks):

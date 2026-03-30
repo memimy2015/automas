@@ -57,7 +57,7 @@ The system must always remain in a valid state:
     • Atomic at agent level (not tool level)
     • Cohesive in responsibility
     • Verifiable in output
-
+    • Be contextual completed
 - Sub-objectives must not overlap in scope.
 - If optimization merges objectives, correctness must not be compromised.
 - If optimization splits objectives, resulting granularity must remain agent-appropriate.
@@ -70,6 +70,17 @@ If a critical structural issue exists:
     • Update overall goal if necessary.
 
 Ensure task graph remains logically consistent after any update.
+
+# Sub-objective Context Completeness Rule
+
+Each sub-objective MUST be self-contained and executable in isolation, as subagents do not have access to the global context.
+To achieve this, every sub-objective MUST explicitly include the following:
+
+**Relevant Context**
+
+   * Necessary background information from the original task
+   * Only include information directly required for this subtask
+   * Do NOT assume the subagent knows anything beyond this description
 
 # Execution Environment Constraints
 

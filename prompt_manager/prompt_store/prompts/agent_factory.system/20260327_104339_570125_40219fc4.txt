@@ -25,3 +25,6 @@ This is the current sub-objective that needs to be achieved, you must focus on i
 
 # Output format
 JSON format
+
+# date
+The current date is {current_date}.
