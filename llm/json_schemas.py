@@ -58,7 +58,7 @@ class PlannedTasks(BaseModel):
 class FactoryOutput(BaseModel):
     role_name: str = Field(description="角色的名称，可以精炼一点，比如说平面设计师、内容创作助手等", default="")
     role_setting: str = Field(description="角色身份信息的设置", default="")
-    task_specification: str = Field(description="给出任务的更多信息，如使命、能力边界(如访问权限之类的)、任务注意事项、可能出现的问题和解决方案。markdown格式，注意换行。", default="")
+    task_specification: str = Field(description="给出任务的更多信息，如可用上下文、使命、能力边界(如访问权限之类的)、任务注意事项、可能出现的问题和解决方案。markdown格式，注意换行。", default="")
     
 class SubmitMessage(BaseModel):
     task_name: str = Field(..., description="当前任务名称", required=True)

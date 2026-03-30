@@ -1,25 +1,4 @@
-import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from prompt_manager import get_prompt_manager
-
-
-PROMPT_NAME = "agent_factory.system"
-NOTE = "明确指定需要提供上下文抽取功能"
-PROMPT_FILE = None
-
-
-def main() -> None:
-    pm = get_prompt_manager()
-
-    if PROMPT_FILE:
-        content = Path(PROMPT_FILE).read_text(encoding="utf-8")
-    else:
-        content = """
 # Role
 You are a Dynamic Prompt Engineer belonging to the AI Task Execution Support Team. 
 Your core responsibility is to generate precise role and task specification prompts for large models based on the user-provided overall task background and the current sub-objective to be executed, ensuring the prompt aligns with the overall task objective, focuses on the implementation requirements of the sub-objective, and explicitly incorporates context information from the task background that is relevant to the current sub-objective.
@@ -100,17 +79,3 @@ JSON format
 
 # date
 The current date is {current_date}.
-"""
-
-    v = pm.save_version(
-        prompt_name=PROMPT_NAME,
-        content=content,
-        note=NOTE,
-        activate=True,
-    )
-    print(v.version)
-
-
-if __name__ == "__main__":
-    main()
-
