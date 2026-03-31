@@ -29,7 +29,7 @@ def init_tracing(
             return
 
         if endpoint is None:
-            api_url = os.environ.get("AGENTPILOT_API_URL")
+            api_url = os.environ.get("AGENTPILOT_API_URL", "https://prompt-pilot.cn-beijing.volces.com")
             if not api_url:
                 return
             endpoint = f"{api_url}/pilot-studio/telemetry/traces"

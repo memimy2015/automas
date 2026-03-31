@@ -241,6 +241,9 @@ def main():
     def go():
         span = get_span_from_context()
         if span is not None:
+            trace_id = get_trace_id()
+            if trace_id:
+                span.set_attribute("metadata.trace_id", trace_id)
             pm = get_prompt_manager()
             prompts = pm.list_prompts()
             snapshot = {}

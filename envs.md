@@ -35,14 +35,21 @@
   - 作用：cozeloop 工作空间 ID  
   - 获取方式：扣子罗盘 -> 工作空间 -> 指针悬浮在对应的空间标签上，右侧出现复制图标即可复制ID
 
+### 3. promptpilot - 上报 trace 数据
 
-### 3. BrowserUse Skill
-- BROWSER_USE_API_KEY  
-  - 作用：browser-use CLI 远程/代理能力的 API Key  
-  - 影响范围：`skills/browser-use/SKILL.md`（由 browser-use CLI 读取）  
-  - 备注：未设置会影响 browser-use 相关能力
+- AGENTPILOT_API_URL
+  - 作用：PromptPilot 服务地址（用于 traces 上报）
+  - 默认值：`https://prompt-pilot.cn-beijing.volces.com`
 
-### 4. 运行与调试
+- AGENTPILOT_API_KEY
+  - 作用：PromptPilot API Key（用于鉴权）
+  - 获取方式：[PromptPilot](https://promptpilot.volcengine.com/workstation/settings/) -> API Key
+
+- AGENTPILOT_PROJECT_ID
+  - 作用：PromptPilot Project ID（用于标识项目）
+  - 获取方式：打开 PromptPilot 网站 -> 点击AI Studio -> 左上角项目名展开 -> 复制项目 ID
+
+### 5. 运行与调试
 - IS_DEBUG_ENABLED  
   - 作用：控制调试模式与自动 dump  
   - 影响范围：`app.py`（启动路径与 auto_dump 启用）、`control/context_manager.py`（auto_dump 与 ID 生成）、`execution/agent/agent.py`（Agent 日志）  
