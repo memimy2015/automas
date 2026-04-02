@@ -14,7 +14,7 @@
 - `execution_agent.system_template`：Execution 子代理 system prompt 总模板
 - `execution_agent.submit_prompt`：Execution 子代理执行后提交结果的 prompt
 - `agent_factory.system`：AgentFactory 的 Prompt Engineer system prompt
-- `claimer.system`：Claimer system prompt
+- `Clarifier.system`：Clarifier system prompt
 - `summarizer.system`：Summarizer system prompt
 - `planner.system_latest_instruction`：Planner 的 system prompt（LATEST_INSTRUCTION）
 - `planner.schedule_init`：Planner INIT 状态的 schedule prompt

@@ -36,7 +36,7 @@ class Notifier:
             notification_msg = "规划者: " + notification_msg
         elif in_channel == self.context_manager.consistentAgent2DefaultChannel["Summarizer"]:
             notification_msg = "总结者: " + notification_msg
-        elif in_channel == self.context_manager.consistentAgent2DefaultChannel["Claimer"]:
+        elif in_channel == self.context_manager.consistentAgent2DefaultChannel["Clarifier"]:
             notification_msg = "澄清者: " + notification_msg
         else:
             notification_msg = self.context_manager.latest_agent_factory_output.role_name + ": " + notification_msg

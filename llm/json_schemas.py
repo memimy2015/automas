@@ -18,7 +18,7 @@ class ResourceReference(BaseModel):
     URI: str = Field(..., description="资源的URI, 需要是文件路径或者网页链接。如果你发现没办法提供这两类，那么说明这个资源应该不存在，不允许设置这个资源", required=True)
     type: Literal["from_user", "from_memorybase", "from_agent"] = Field(description="资源的来源类型", required=True, default="from_user")
 
-class ClaimerSchema(BaseModel):
+class ClarifierSchema(BaseModel):
     need_more_info: bool = Field(default=False, description="是否需要更多信息，也是允许与用户交互的开关")
     contents: list[ProactiveQuery] = Field(description="为了补充不足的信息而向用户提出的问题列表，或者是得到用户的认可的尝试", default_factory=list)
     refined_objective: str = Field(description="用户对任务的完善描述", default="")

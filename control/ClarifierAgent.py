@@ -1,4 +1,4 @@
-from miscellaneous.cozeloop_preprocess import claimer_process_output
+from miscellaneous.cozeloop_preprocess import Clarifier_process_output
 from typing import List
 from datetime import datetime
 from control.context_manager import ContextManager
@@ -7,7 +7,7 @@ from resources.tools.skill_tool import get_skill_list
 import json
 from resources.tools.tool_executer import ToolExecuter
 from llm.llm import llm_call, llm_call_json_schema
-from llm.json_schemas import ProactiveQuery, ClaimerSchema
+from llm.json_schemas import ProactiveQuery, ClarifierSchema
 from execution.agent.prompt import render
 from .notifier import Notifier
 from miscellaneous.observe import observe
@@ -44,16 +44,16 @@ The goal is to obtain an executable and plannable requirement through dialogue w
 JSON format
 """
 
-class ClaimerAgent:
+class ClarifierAgent:
     def __init__(self, notifier: Notifier, context_manager: ContextManager):
         self.messages = []
-        self.logger = setup_logger("ClaimerAgent")
+        self.logger = setup_logger("ClarifierAgent")
         # prompt = DEFAULT_INSTRUCTION.format(access_knowledgeDB())
         pm = get_prompt_manager()
-        prompt = pm.render("claimer.system", DEFAULT_INSTRUCTION, None, PROJECT_DIR=context_manager.get_project_dir(), current_date=datetime.now().strftime("%Y年%m月%d日"))
+        prompt = pm.render("Clarifier.system", DEFAULT_INSTRUCTION, None, PROJECT_DIR=context_manager.get_project_dir(), current_date=datetime.now().strftime("%Y年%m月%d日"))
         self.notifier = notifier
         self.context_manager = context_manager
-        agent_id, channel = self.context_manager.get_consistent_agent_identity("Claimer")
+        agent_id, channel = self.context_manager.get_consistent_agent_identity("Clarifier")
         if agent_id is not None and channel:
             self.agent_id = agent_id
             self.identity = channel.rsplit("_main", 1)[0]
@@ -61,8 +61,8 @@ class ClaimerAgent:
                 self.context_manager.add_active_subagent(self.agent_id, channel, dump=False)
         else:
             self.agent_id = self.context_manager.obtain_id(dump=False)
-            self.identity = f"Claimer_{self.agent_id}"
-            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Claimer", dump=False)
+            self.identity = f"Clarifier_{self.agent_id}"
+            self.context_manager.register_consistent_subagent(self.agent_id, self.identity + "_main", "Clarifier", dump=False)
             self.append_message({"role": "system", "content": prompt}, channel=self.identity + "_main", dump=False)
         
     def append_message(self, message: dict, channel: str | List[str] = None, usage: dict = None, dump: bool = True):
@@ -78,24 +78,24 @@ class ClaimerAgent:
         self.context_manager.add_dialogue(self.agent_id, channel, [message | {"timestamp": datetime.now().timestamp()} | {"usage": usage}], dump=dump)
 
     @observe(
-        name="claimer",
-        span_type="claimer_span",
-        process_outputs=claimer_process_output,
+        name="Clarifier",
+        span_type="Clarifier_span",
+        process_outputs=Clarifier_process_output,
     )
     def run(self, query: str):
         if os.environ.get("AUTOMAS_ENABLE_OBSERVE", "0") == "1":
-            QA = self.context_manager.get_active_qa("claimer")
+            QA = self.context_manager.get_active_qa("Clarifier")
         else:
             QA = []
-        self.context_manager.set_active_qa("claimer", QA, dump=False)
-        print("=====ClaimerAgent Started=====")
+        self.context_manager.set_active_qa("Clarifier", QA, dump=False)
+        print("=====ClarifierAgent Started=====")
         try:
             if self.context_manager.get_available_resources():
                 formatted_available_resources = self.context_manager.get_formatted_available_resources()
                 self.append_message({"role": "user", "content": f"当前可用资源：\n {formatted_available_resources}"}, channel=[self.identity + "_main", "user"], dump=False) # 这里可能后续需要改，会把所有资源加入消息历史，可能会很长，至少不应该发到user信道被planner接受
             self.append_message({"role": "user", "content": query}, channel=[self.identity + "_main", "user"], dump=True)
             self._prepare_context()
-            finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
+            finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Clarifier")
             if finish_reason == "error":
                 self.logger.error(f"LLM error: msg={getattr(resp, 'content', '')}")
                 raise RuntimeError(resp.content)
@@ -112,10 +112,10 @@ class ClaimerAgent:
                     self.append_message({"role": "assistant", "content": model_query}, channel=self.identity + "_main", dump=first_dump_after_llm)
                     first_dump_after_llm = False
                     self.append_message({"role": "user", "content": user_resp}, channel=self.identity + "_main", dump=(i == len(resp.contents)))
-                    QA.append({"claimer": model_query, "user": user_resp})
-                    self.context_manager.set_active_qa("claimer", QA, dump=False)
+                    QA.append({"Clarifier": model_query, "user": user_resp})
+                    self.context_manager.set_active_qa("Clarifier", QA, dump=False)
                 self._prepare_context()
-                finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Claimer")
+                finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=[], jsonSchema="Clarifier")
                 if finish_reason == "error":
                     self.logger.error(f"LLM error: msg={getattr(resp, 'content', '')}")
                     raise RuntimeError(resp.content)
@@ -125,7 +125,7 @@ class ClaimerAgent:
             for resource_ref in resp.resource_reference:
                 self.append_message({"role": "user", "content": f"可用资源描述：{resource_ref.description} | 资源URI: {resource_ref.URI} | 资源来源类型(type): {resource_ref.type}"}, channel=[self.identity + "_main"], dump=False)
                 self.context_manager.add_available_resources({resource_ref.description: resource_ref}, dump=False)
-            print("=====ClaimerAgent Finished=====")
+            print("=====ClarifierAgent Finished=====")
             self.context_manager.is_clarified = True
             self.append_message({"role": "user", "content": f"现在的目标是：{resp.refined_objective}"}, channel=[self.identity + "_main"], dump=False)
             self.context_manager.update_overall_goal(resp.refined_objective, dump=True)
@@ -140,11 +140,11 @@ class ClaimerAgent:
             self.logger.error(f"Run exception: err={e}")
             raise
         finally:
-            self.context_manager.clear_active_qa("claimer", dump=False)
+            self.context_manager.clear_active_qa("Clarifier", dump=False)
             QA.clear()
-            self.context_manager._auto_dump("claimer_exit", {"agent_id": self.agent_id})
-            # 通知状态变更（Claimer 完成）
-            self.context_manager._notify_state_change("claimer_completed")
+            self.context_manager._auto_dump("Clarifier_exit", {"agent_id": self.agent_id})
+            # 通知状态变更（Clarifier 完成）
+            self.context_manager._notify_state_change("Clarifier_completed")
         
     def _prepare_context(self):
         self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=[self.identity + "_main"], formatted=False)

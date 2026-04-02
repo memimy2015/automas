@@ -73,36 +73,36 @@
         }
       }
     },
-    "claimer.system": {
-      "safe_name": "claimer.system",
+    "Clarifier.system": {
+      "safe_name": "Clarifier.system",
       "active_version": "20260327_104237_862281_2b637f3c",
       "versions": {
         "20260325_055240_410861_3bb4ab23": {
-          "uri": "prompts/claimer.system/20260325_055240_410861_3bb4ab23.txt",
+          "uri": "prompts/Clarifier.system/20260325_055240_410861_3bb4ab23.txt",
           "created_at": "2026-03-25T05:52:40Z",
           "note": "bootstrap",
           "sha256": "41c03ec83ccd935cac74accad8db459020c48e2a65e3f0035d40098c58f61c9d"
         },
         "20260325_114334_400433_59f60a1f": {
-          "uri": "prompts/claimer.system/20260325_114334_400433_59f60a1f.txt",
+          "uri": "prompts/Clarifier.system/20260325_114334_400433_59f60a1f.txt",
           "created_at": "2026-03-25T11:43:34Z",
-          "note": "claimer 调参实验, 尝试让claimer问的更加透彻",
+          "note": "Clarifier 调参实验, 尝试让Clarifier问的更加透彻",
           "sha256": "250b9efce5706a8a7574d6bdc25c167378dd106a4c6b119903fea90247e3c310"
         },
         "20260327_091006_885318_f3c8da84": {
-          "uri": "prompts/claimer.system/20260327_091006_885318_f3c8da84.txt",
+          "uri": "prompts/Clarifier.system/20260327_091006_885318_f3c8da84.txt",
           "created_at": "2026-03-27T09:10:06Z",
-          "note": "claimer 调参实验, 尝试让claimer问的更加透彻, 并且会在确认前询问用户许可",
+          "note": "Clarifier 调参实验, 尝试让Clarifier问的更加透彻, 并且会在确认前询问用户许可",
           "sha256": "8a318c5201021ab237eddc49ae0e37e054ef9d8a44f433cce1e57eff25a54a74"
         },
         "20260327_091011_048815_deba87b7": {
-          "uri": "prompts/claimer.system/20260327_091011_048815_deba87b7.txt",
+          "uri": "prompts/Clarifier.system/20260327_091011_048815_deba87b7.txt",
           "created_at": "2026-03-27T09:10:11Z",
-          "note": "claimer 调参实验, 尝试让claimer问的更加透彻, 并且会在确认前询问用户许可",
+          "note": "Clarifier 调参实验, 尝试让Clarifier问的更加透彻, 并且会在确认前询问用户许可",
           "sha256": "8a318c5201021ab237eddc49ae0e37e054ef9d8a44f433cce1e57eff25a54a74"
         },
         "20260327_104237_862281_2b637f3c": {
-          "uri": "prompts/claimer.system/20260327_104237_862281_2b637f3c.txt",
+          "uri": "prompts/Clarifier.system/20260327_104237_862281_2b637f3c.txt",
           "created_at": "2026-03-27T10:42:37Z",
           "note": "移除用户许可，增加思考规则，添加更多对澄清的引导",
           "sha256": "b38123f4b7ae7bb24227817b1cfdd26f32504c959c95ddf1d85692e014a3f040"

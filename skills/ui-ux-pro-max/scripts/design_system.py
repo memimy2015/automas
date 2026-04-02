@@ -16,9 +16,16 @@ Usage:
 import csv
 import json
 import os
+import sys
+import io
 from datetime import datetime
 from pathlib import Path
-from .core import search, DATA_DIR
+import core
+
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8' and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8' and hasattr(sys.stderr, "buffer"):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 
 # ============ CONFIGURATION ============
@@ -42,7 +49,7 @@ class DesignSystemGenerator:
 
     def _load_reasoning(self) -> list:
         """Load reasoning rules from CSV."""
-        filepath = DATA_DIR / REASONING_FILE
+        filepath = core.DATA_DIR / REASONING_FILE
         if not filepath.exists():
             return []
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -56,9 +63,9 @@ class DesignSystemGenerator:
                 # For style, also search with priority keywords
                 priority_query = " ".join(style_priority[:2]) if style_priority else query
                 combined_query = f"{query} {priority_query}"
-                results[domain] = search(combined_query, domain, config["max_results"])
+                results[domain] = core.search(combined_query, domain, config["max_results"])
             else:
-                results[domain] = search(query, domain, config["max_results"])
+                results[domain] = core.search(query, domain, config["max_results"])
         return results
 
     def _find_reasoning_rule(self, category: str) -> dict:
@@ -163,7 +170,7 @@ class DesignSystemGenerator:
     def generate(self, query: str, project_name: str = None) -> dict:
         """Generate complete design system recommendation."""
         # Step 1: First search product to get category
-        product_result = search(query, "product", 1)
+        product_result = core.search(query, "product", 1)
         product_results = product_result.get("results", [])
         category = "General"
         if product_results:
@@ -918,16 +925,14 @@ def _generate_intelligent_overrides(page_name: str, page_query: str, design_syst
     Uses the existing search infrastructure to find relevant style, UX, and layout
     data instead of hardcoded page types.
     """
-    from core import search
-    
     page_lower = page_name.lower()
     query_lower = (page_query or "").lower()
     combined_context = f"{page_lower} {query_lower}"
     
     # Search across multiple domains for page-specific guidance
-    style_search = search(combined_context, "style", max_results=1)
-    ux_search = search(combined_context, "ux", max_results=3)
-    landing_search = search(combined_context, "landing", max_results=1)
+    style_search = core.search(combined_context, "style", max_results=1)
+    ux_search = core.search(combined_context, "ux", max_results=3)
+    landing_search = core.search(combined_context, "landing", max_results=1)
     
     # Extract results from search response
     style_results = style_search.get("results", [])

@@ -124,10 +124,10 @@ class ContextManager:
         if dump:
             self._auto_dump("record_tool_usage", {"agent_id": agent_id, "tool_name": tool_name, "count": usage[tool_name]})
 
-    def get_active_qa(self, kind: Literal["claimer", "planner", "agent"]) -> List[Dict[str, Any]]:
+    def get_active_qa(self, kind: Literal["Clarifier", "planner", "agent"]) -> List[Dict[str, Any]]:
         return list((self.active_qa or {}).get(kind, []) or [])
 
-    def set_active_qa(self, kind: Literal["claimer", "planner", "agent"], qa: List[Dict[str, Any]], dump: bool = True):
+    def set_active_qa(self, kind: Literal["Clarifier", "planner", "agent"], qa: List[Dict[str, Any]], dump: bool = True):
         qa_value = list(qa or [])
         if not self.active_qa:
             self.active_qa = {}
@@ -135,7 +135,7 @@ class ContextManager:
         if dump:
             self._auto_dump("set_active_qa", {"kind": kind, "count": len(qa_value)})
 
-    def clear_active_qa(self, kind: Literal["claimer", "planner", "agent"], dump: bool = True):
+    def clear_active_qa(self, kind: Literal["Clarifier", "planner", "agent"], dump: bool = True):
         if not self.active_qa:
             self.active_qa = {}
         self.active_qa[kind] = []

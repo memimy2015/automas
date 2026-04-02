@@ -127,9 +127,9 @@ def planner_process_output(input: dict) -> dict:
             "QA": input["QA"]
         }
 
-def claimer_process_output(input: dict) -> dict:
+def Clarifier_process_output(input: dict) -> dict:
     """
-    Preprocess the input for the claimer.
+    Preprocess the input for the Clarifier.
     """
     return {
             "Refined_objective": input["Refined_objective"],

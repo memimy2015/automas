@@ -10,7 +10,7 @@ except Exception:
     Ark = None
 import os
 from pydantic import BaseModel, Field
-from .json_schemas import ClaimerSchema, PlannedTasks, Replan, ContinueNextStep, JudgePlannerState
+from .json_schemas import ClarifierSchema, PlannedTasks, Replan, ContinueNextStep, JudgePlannerState
 from miscellaneous.observe import get_span_from_context, observe
 from cozeloop import flush
 from control.context_manager import ContextManager
@@ -39,7 +39,7 @@ client = OpenAI(
 
 registered_schema = {}
 
-registered_schema["Claimer"] = ClaimerSchema
+registered_schema["Clarifier"] = ClarifierSchema
 registered_schema["Planner"] = Replan
 registered_schema["PromptEngineer"] = FactoryOutput
 registered_schema["Submit"] = SubmitMessage

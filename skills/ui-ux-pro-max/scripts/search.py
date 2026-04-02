@@ -17,8 +17,7 @@ Persistence (Master + Overrides pattern):
 import argparse
 import sys
 import io
-from core import CSV_CONFIG, AVAILABLE_STACKS, MAX_RESULTS, search, search_stack
-from design_system import generate_design_system, persist_design_system
+import core
 
 # Force UTF-8 for stdout/stderr to handle emojis on Windows (cp1252 default)
 if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
@@ -56,9 +55,9 @@ def format_output(result):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="UI Pro Max Search")
     parser.add_argument("query", help="Search query")
-    parser.add_argument("--domain", "-d", choices=list(CSV_CONFIG.keys()), help="Search domain")
-    parser.add_argument("--stack", "-s", choices=AVAILABLE_STACKS, help="Stack-specific search (react-native)")
-    parser.add_argument("--max-results", "-n", type=int, default=MAX_RESULTS, help="Max results (default: 3)")
+    parser.add_argument("--domain", "-d", choices=list(core.CSV_CONFIG.keys()), help="Search domain")
+    parser.add_argument("--stack", "-s", choices=core.AVAILABLE_STACKS, help="Stack-specific search (react-native)")
+    parser.add_argument("--max-results", "-n", type=int, default=core.MAX_RESULTS, help="Max results (default: 3)")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     # Design system generation
     parser.add_argument("--design-system", "-ds", action="store_true", help="Generate complete design system recommendation")
@@ -73,6 +72,7 @@ if __name__ == "__main__":
 
     # Design system takes priority
     if args.design_system:
+        from design_system import generate_design_system
         result = generate_design_system(
             args.query, 
             args.project_name, 
@@ -98,7 +98,7 @@ if __name__ == "__main__":
             print("=" * 60)
     # Stack search
     elif args.stack:
-        result = search_stack(args.query, args.stack, args.max_results)
+        result = core.search_stack(args.query, args.stack, args.max_results)
         if args.json:
             import json
             print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -106,7 +106,7 @@ if __name__ == "__main__":
             print(format_output(result))
     # Domain search
     else:
-        result = search(args.query, args.domain, args.max_results)
+        result = core.search(args.query, args.domain, args.max_results)
         if args.json:
             import json
             print(json.dumps(result, indent=2, ensure_ascii=False))

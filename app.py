@@ -6,7 +6,7 @@ PROMPT_VERSION_OVERRIDES = {
     "execution_agent.system_template": None,
     "execution_agent.submit_prompt": None,
     "agent_factory.system": None,
-    "claimer.system": None,
+    "Clarifier.system": None,
     "summarizer.system": None,
     "planner.system_latest_instruction": None,
     "planner.schedule_init": None,
@@ -30,7 +30,7 @@ from execution.factory.agent_factory import AgentFactory
 from llm.json_schemas import ResourceReference
 from control.context_manager import ContextManager
 from execution.agent.agent import Agent
-from control.ClaimerAgent import ClaimerAgent
+from control.ClarifierAgent import ClarifierAgent
 from control.PlannerAgent import PlannerAgent
 from resources.tools.tool_executer import ToolExecuter
 from resources.tools.persistent_shell import PersistentShell
@@ -358,11 +358,8 @@ def main():
                 notifier = Notifier(context_manager)
                 DEFAULT_TOOLS_LIST = tool_executer.list_tools()
                 print(f"Available tools: {DEFAULT_TOOLS_LIST}")
-                # for test only
-                # context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
-                # context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
 
-                claim_agent = ClaimerAgent(notifier, context_manager)
+                claim_agent = ClarifierAgent(notifier, context_manager)
                 plan_agent = PlannerAgent(context_manager, notifier, tool_executer, ["call_user", "read_file", "command"])
                 summarizer_agent = SummarizerAgent(notifier, context_manager)
                 agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)
@@ -398,11 +395,8 @@ def main():
                 notifier = Notifier(context_manager)
                 DEFAULT_TOOLS_LIST = tool_executer.list_tools()
                 print(f"Available tools: {DEFAULT_TOOLS_LIST}")
-                # for test only
-                # context_manager.add_available_resources({"公司信息，包含周报公司名称、汇报时间周期及核心内容模块": ResourceReference(description="公司信息，包含周报公司名称、汇报时间周期及核心内容模块", URI="https://www.my_company.com/report", type="from_memorybase")})
-                # context_manager.add_available_resources({"需要解决的题目截图": ResourceReference(description="需要解决的题目截图", URI="image.png", type="from_memorybase")})
 
-                claim_agent = ClaimerAgent(notifier, context_manager)
+                claim_agent = ClarifierAgent(notifier, context_manager)
                 plan_agent = PlannerAgent(context_manager, notifier, tool_executer, ["call_user", "read_file", "command"])
                 summarizer_agent = SummarizerAgent(notifier, context_manager)
                 agent_factory = AgentFactory(context_manager,DEFAULT_TOOLS_LIST, tool_executer, shell)

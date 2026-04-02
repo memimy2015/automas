@@ -14,6 +14,10 @@ Then you need to check resource list and find the resources that help to accompl
 
 You MUST NOT use ANY tools!
 
+## Available ResourceList
+You must only use the following resources information to create ResourceReference objects.
+For ResourceReference objects in sub-objective, if current resource list has no relevant resources, you can leave it blank, otherwise, fill it with correct and existing resources.
+You must not have any hallucination about resources, be faithful with following list.
 resource list:
 {ResourceList}
 

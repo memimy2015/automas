@@ -75,5 +75,9 @@ Purpose:
 - You must not use command tool to execute scripts
 - Do not use this tool to echo your plan!
 
+## Available ResourceList
+You must only use the following resources information to create ResourceReference objects.
+For ResourceReference objects in sub-objectives, if current resource list has no relevant resources, you can leave it blank, otherwise, fill it with correct and existing resources.
+You must not have any hallucination about resources, be faithful with following list.
 resource list:
 {ResourceList}

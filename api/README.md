@@ -233,7 +233,7 @@ ws.onclose = () => {
 |---------|------|---------|
 | `agent_created` | AgentFactory 成功创建子智能体时 | `context_manager.py` |
 | `agent_completed` | Agent 执行完成并提交结果时（包括成功、失败、取消） | `context_manager.py` |
-| `claimer_completed` | Claimer 执行完成时 | `ClaimerAgent.py` |
+| `Clarifier_completed` | Clarifier 执行完成时 | `ClarifierAgent.py` |
 | `planner_completed` | Planner 执行完成时 | `PlannerAgent.py` |
 | `summarizer_completed` | Summarizer 执行完成时 | `SummarizerAgent.py` |
 
@@ -241,7 +241,7 @@ ws.onclose = () => {
 
 | 触发原因 | 说明 | 代码位置 |
 |---------|------|---------|
-| `call_user` | 系统需要用户输入时（Planner、Claimer、Summarizer、Agent 都可能触发） | `notifier.py` |
+| `call_user` | 系统需要用户输入时（Planner、Clarifier、Summarizer、Agent 都可能触发） | `notifier.py` |
 
 ### 进度更新触发点
 
@@ -261,7 +261,7 @@ ws.onclose = () => {
 
 5. **agent_completed**: Agent 执行完成并调用 submit_sub_objective 后触发，表示当前子目标已完成
 
-6. **claimer/planner/summarizer_completed**: 特殊 Agent 完成时触发，表示对应阶段结束
+6. **Clarifier/planner/summarizer_completed**: 特殊 Agent 完成时触发，表示对应阶段结束
 
 7. **task_completed**: 主循环结束、Summarizer 生成总结后触发，表示整个任务完成
 

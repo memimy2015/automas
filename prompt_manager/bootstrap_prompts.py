@@ -40,7 +40,7 @@ def main() -> None:
         ("planner.schedule_continue", ROOT / "control" / "PlannerAgent.py", "CONTINUE_SCHEDULE"),
         ("planner.schedule_replan", ROOT / "control" / "PlannerAgent.py", "REPLAN_SCHEDULE"),
         ("planner.schedule_pending", ROOT / "control" / "PlannerAgent.py", "PENDING_SCHEDULE"),
-        ("claimer.system", ROOT / "control" / "ClaimerAgent.py", "DEFAULT_INSTRUCTION"),
+        ("Clarifier.system", ROOT / "control" / "ClarifierAgent.py", "DEFAULT_INSTRUCTION"),
         ("summarizer.system", ROOT / "control" / "SummarizerAgent.py", "DEFAULT_INSTRUCTION"),
         ("agent_factory.system", ROOT / "execution" / "factory" / "agent_factory.py", "DEFAULT_INSTRUCTION"),
         ("execution_agent.system_template", ROOT / "execution" / "agent" / "prompt.py", "SYS_PROMPT_TEMPLATE"),
