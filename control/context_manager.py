@@ -231,10 +231,11 @@ class ContextManager:
             tool_args["out_channel"] = "user"
         tool_result = tool_executer.call(tool_name, tool_args)
         if tool_name != "call_user":
+            tool_messages = tool_executer.build_tool_result_messages(tool_name, tool_args, tool_result, tool_call.get("id"))
             self.add_dialogue(
                 agent_id,
                 channel,
-                [{"role": "tool", "content": tool_result, "tool_call_id": tool_call.get("id"), "tool_name": tool_name} | {"timestamp": datetime.now().timestamp()}],
+                [m | {"timestamp": datetime.now().timestamp()} for m in tool_messages],
             )
         self.pending_tool_call_channels.add(channel)
     

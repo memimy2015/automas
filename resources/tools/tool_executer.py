@@ -168,6 +168,30 @@ class ToolExecuter:
         elif tool_name == "call_user":
             return call_user(args["query"], args["invoker_agent_id"], args["in_channel"], args["out_channel"])
         return f"Tool {tool_name} not found"
+
+    def build_tool_result_messages(self, tool_name: str, tool_args: dict, tool_result, tool_call_id: str):
+        if tool_name == "read_file" and self._is_read_file_image_payload(tool_result):
+            file_path = ""
+            if isinstance(tool_args, dict):
+                file_path = tool_args.get("file_path") or ""
+            content = f"图片内容已成功读取: {file_path}" if file_path else "图片内容已成功读取"
+            return [
+                {"role": "tool", "content": content, "tool_call_id": tool_call_id, "tool_name": tool_name},
+                {"role": "user", "content": tool_result},
+            ]
+        return [{"role": "tool", "content": tool_result, "tool_call_id": tool_call_id, "tool_name": tool_name}]
+
+    def _is_read_file_image_payload(self, tool_result) -> bool:
+        if not isinstance(tool_result, list):
+            return False
+        for item in tool_result:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "image_url":
+                image_url = item.get("image_url")
+                if isinstance(image_url, dict) and image_url.get("url"):
+                    return True
+        return False
     
     def get_tool(self, tool_name: str):
         return self.tools_desc_map[tool_name]

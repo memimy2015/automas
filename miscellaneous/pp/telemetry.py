@@ -45,6 +45,7 @@ def init_tracing(
             # BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, headers=headers))
             SimpleSpanProcessor(OTLPSpanExporter(endpoint=endpoint, headers=headers))
         )
+        # provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 
         trace.set_tracer_provider(provider)
 

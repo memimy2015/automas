@@ -76,6 +76,9 @@ def run_automas_task(task_id: str, query: str, task_dir: str, debug: bool,
         "--task_id", task_id,
         # "--dry_run"  # 始终使用 dry_run 模式（不发送 observe）
     ]
+    trace_provider = os.environ.get("AUTOMAS_TRACE_PROVIDER")
+    if trace_provider:
+        sys.argv.extend(["--trace_provider", trace_provider])
     if debug:
         sys.argv.append("--debug")
 

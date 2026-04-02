@@ -56,10 +56,12 @@ def llm_call_process_output(output: tuple) -> dict:
     """
     Preprocess the input for the llm call.
     """
+    response = output[1]
+    response_dump = response.model_dump() if hasattr(response, "model_dump") else response
     return {
             "finish_reason": output[0],
-            "response": output[1].model_dump(),
-            "reasoning": output[1].reasoning_content,
+            "response": response_dump,
+            "reasoning": getattr(response, "reasoning_content", None),
             "usage": output[2].model_dump(),
         }
     
@@ -73,8 +75,11 @@ def llm_call_process_input(input: dict) -> dict:
         raise ValueError("llm_call 只支持关键字传参，请使用 messages=..., tools=...")
     if "messages" not in kwargs or "tools" not in kwargs:
         raise ValueError("llm_call 缺少关键字参数 messages 或 tools")
+    messages = kwargs["messages"]
+    if isinstance(messages, list) and len(messages) > 8:
+        messages = messages[:4] + messages[-4:]
     return {
-            "messages": kwargs["messages"],
+            "messages": messages,
             "tools": kwargs["tools"],
         }
     
@@ -83,10 +88,11 @@ def llm_call_json_schema_process_output(output: tuple) -> dict:
     """
     Preprocess the input for the llm call.
     """
+    response = output[1]
     return {
             "finish_reason": output[0],
-            "response": output[1].parsed.model_dump() if output[0] != "tool_calls" else output[1].tool_calls[0].function.model_dump(),
-            "reasoning": output[1].reasoning_content,
+            "response": response.parsed.model_dump() if output[0] != "tool_calls" else response.tool_calls[0].function.model_dump(),
+            "reasoning": getattr(response, "reasoning_content", None),
             "usage": output[2].model_dump(),
         }
 
@@ -100,8 +106,11 @@ def llm_call_json_schema_process_input(input: dict) -> dict:
         raise ValueError("llm_call_json_schema 只支持关键字传参，请使用 messages=..., tools=..., jsonSchema=...")
     if "messages" not in kwargs or "tools" not in kwargs or "jsonSchema" not in kwargs:
         raise ValueError("llm_call_json_schema 缺少关键字参数 messages、tools 或 jsonSchema")
+    messages = kwargs["messages"]
+    if isinstance(messages, list) and len(messages) > 8:
+        messages = messages[:4] + messages[-4:]
     return {
-            "messages": kwargs["messages"],
+            "messages": messages,
             "tools": kwargs["tools"],
             "jsonSchema": kwargs["jsonSchema"],
         }

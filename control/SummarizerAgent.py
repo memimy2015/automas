@@ -111,7 +111,7 @@ class SummarizerAgent:
             self.append_message(
                 {
                     "role": "user",
-                    "content": f"根据之前的信息，找出我一开始提出的要求所对应的资源，需要名字、描述和URI，确保信息准确，并且详细的总结一下信息。我一开始的要求是：{self.context_manager.overall_goal}"
+                    "content": f"根据之前的信息，找出我提出的要求所对应的资源，需要名字、描述和URI，确保信息准确，并且详细的总结一下信息。我的要求是：{self.context_manager.overall_goal}"
                 },
                 self.identity + "_main",
                 dump=True
@@ -139,6 +139,6 @@ class SummarizerAgent:
             self.context_manager._notify_state_change("summarizer_completed")
     
     def _prepare_context(self):
-        self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", "Claimer*", self.identity + "_main"], formatted=False)
+        self.messages = self.context_manager.get_dialogue(invoker_channel=self.identity + "_main", filter=["*_summary", "user", self.identity + "_main"], formatted=False)
         
         

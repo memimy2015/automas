@@ -12,7 +12,7 @@ import os
 from pydantic import BaseModel, Field
 from .json_schemas import ClaimerSchema, PlannedTasks, Replan, ContinueNextStep, JudgePlannerState
 from miscellaneous.observe import get_span_from_context, observe
-# from cozeloop import flush
+from cozeloop import flush
 from control.context_manager import ContextManager
 from config.logger import setup_logger
 import time
@@ -141,7 +141,8 @@ def llm_call(*, messages: list, tools: list):
             formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"],
         )
         span.set_attribute("metadata.last_dump_filepath", context_manager.last_dump_filepath)
-        # flush()
+        if os.environ.get("AUTOMAS_TRACE_PROVIDER") == "cozeloop":
+            flush()
     finish_reason = resp.choices[0].finish_reason
     if finish_reason == "content_filter":
         logger.warning("WARNING: 生成内容被审核拦截")
@@ -203,7 +204,8 @@ def llm_call_json_schema(*, messages: list, tools: list, jsonSchema: str):
             formatted_usage["completion_tokens"] + formatted_usage["reasoning_token"],
         )
         span.set_attribute("metadata.last_dump_filepath", context_manager.last_dump_filepath)
-        # flush()
+        if os.environ.get("AUTOMAS_TRACE_PROVIDER") == "cozeloop":
+            flush()
     finish_reason = resp.choices[0].finish_reason
     if finish_reason == "content_filter":
         logger.warning("WARNING: 生成内容被审核拦截")

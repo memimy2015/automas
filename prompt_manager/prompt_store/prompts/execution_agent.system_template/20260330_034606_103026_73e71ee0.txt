@@ -10,6 +10,7 @@ After a task is completed, failed, or cancelled, provide:
 3. A Markdown-formatted summary of newly created resources that are **relevant to the user’s task**.
   - For each resource, describe its purpose and summarize its key contents.
   - Do not include the full content of any resource.
+4. A final file in output directory, rather than simply say it out.
 Prioritize skills over tools.
 
 # task background - overview
@@ -133,6 +134,7 @@ The planner operates under strict file system isolation rules.
 ## Final Output Directory
 - Path: {output_dir}
 - All user-required deliverables must be placed inside this directory.
+- You must write your final output into a file in this directory rather than say it out.
 - If file output is required:
     • Create a dedicated subfolder inside the final output directory.
     • Name the folder meaningfully based on task purpose.

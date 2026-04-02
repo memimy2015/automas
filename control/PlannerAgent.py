@@ -812,7 +812,9 @@ class PlannerAgent:
                 tool_result = self.tool_executer.call(tool_name, tool_args)
                 tool_call_id = resp.tool_calls[0].id
                 if tool_name != "call_user":
-                    self.append_message({"role": "tool", "content": tool_result, "tool_call_id": tool_call_id, "tool_name": tool_name}, channel=self.identity + "_main", dump=False)
+                    tool_messages = self.tool_executer.build_tool_result_messages(tool_name, tool_args, tool_result, tool_call_id)
+                    for m in tool_messages:
+                        self.append_message(m, channel=self.identity + "_main", dump=False)
                 if tool_name == "call_user":
                     QA.append({"planner": tool_args["query"], "user": tool_result})
                     self.context_manager.set_active_qa("planner", QA, dump=True)

@@ -22,7 +22,7 @@ class ClaimerSchema(BaseModel):
     need_more_info: bool = Field(default=False, description="是否需要更多信息，也是允许与用户交互的开关")
     contents: list[ProactiveQuery] = Field(description="为了补充不足的信息而向用户提出的问题列表，或者是得到用户的认可的尝试", default_factory=list)
     refined_objective: str = Field(description="用户对任务的完善描述", default="")
-    resource_reference: list[ResourceReference] = Field(description="用户对任务的完善描述的资源引用", default_factory=list)
+    resource_reference: list[ResourceReference] = Field(description="对用户任务的完善描述的资源引用", default_factory=list)
 
 class SubtaskResults(BaseModel):
     Summary: str = Field(description="子任务的摘要", default="")
@@ -72,6 +72,12 @@ class PlannerState(Enum):
     REPLAN = "replan"
     FINISHED = "finished"
     PENDING = "pending"
+    
+class SubagentState(Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 class SimplifiedSubtaskStep(BaseModel):
     sub_objective: str = Field(description="子任务的子步骤描述，描述需要清晰完整，带有必要的信息，如任务背景之类的。", default="")

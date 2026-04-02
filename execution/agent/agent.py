@@ -182,9 +182,9 @@ class Agent:
                     tool_args["out_channel"] = "user"
                 self.context_manager.record_tool_usage(self.agent_id, tool_name, dump=False)
                 tool_result = self.tool_executer.call(tool_name, tool_args)
-                self.append_message(
-                    {"role": "tool", "content": tool_result, "tool_call_id": tool_call.id, "tool_name": tool_name}, usage.model_dump(), channel=self.identity + "_main", dump=False
-                )
+                tool_messages = self.tool_executer.build_tool_result_messages(tool_name, tool_args, tool_result, tool_call.id)
+                for m in tool_messages:
+                    self.append_message(m, usage.model_dump(), channel=self.identity + "_main", dump=False)
                 if tool_name == "call_user":
                     QA.append({"agent": tool_args["query"], "user": tool_result})
                     self.context_manager.set_active_qa("agent", QA, dump=False)
