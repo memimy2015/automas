@@ -14,7 +14,7 @@ const AGENT_AVATAR_URL =
   "https://storage-public.zhaopin.cn/user/avatar/b4a36c5df1d845de9372f4dab5dbb3dd/timg.jpg"
 
 const REFRESH_MS = 5000
-const API_BASE = "http://localhost:8000/api"
+const API_BASE = `http://${window.location.hostname}:8000/api`
 
 function isBlank(v) {
   return v == null || String(v).trim() === ""
