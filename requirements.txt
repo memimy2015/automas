@@ -1,2 +1,7 @@
 fastapi
 uvicorn
+cozeloop
+openai
+opentelemetry-api
+opentelemetry-sdk
+openinference-instrumentation-openai

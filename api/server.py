@@ -66,6 +66,12 @@ def run_automas_task(task_id: str, query: str, task_dir: str, debug: bool,
         register_q: 注册队列（用于子进程注册 query）
     """
     import sys
+    import os
+
+    # Ensure the root directory is in sys.path for the spawned subprocess
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root_dir not in sys.path:
+        sys.path.insert(0, root_dir)
 
     # 设置 sys.argv 供 app.py 的 argparse 使用
     # app.py 期望的参数: --query, --task_dir, --task_id, --debug, --dry_run
