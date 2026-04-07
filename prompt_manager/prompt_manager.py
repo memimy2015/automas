@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Optional, Tuple
 from uuid import uuid4
-
+from typing import Optional
 from config.logger import setup_logger
 
 
@@ -70,7 +70,7 @@ class PromptVersion:
     version: str
     uri: str
     created_at: str
-    note: str | None
+    note: Optional[str]
     sha256: str
 
 
