@@ -124,7 +124,7 @@ class Agent:
             QA = []
         self.context_manager.set_active_qa("agent", QA, dump=True)
         if query !=  "":
-            self.append_message({"role": "user", "content": query}, {}, channel=self.identity + "_main", dump=False)
+            self.append_message({"role": "user", "content": query}, {}, channel=self.identity + "_main", dump=True)
         tools = []
         for tool_name in self.tool_name_list:
             tools.append(self.tool_executer.get_tool(tool_name))    
@@ -158,18 +158,21 @@ class Agent:
                         print(f"resources: {resources}")
                         
                         current_subtask_index, current_subtask_step_index = self.context_manager._get_current_indices()
+                        self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources)
                         current_subtask_step = self.context_manager.get_subtask_step(current_subtask_index, current_subtask_step_index)
-                        formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)   
-                        self.append_message({"role": "user", "content": f"现在处理的子目标概况：\n {formatted_subtask_step} \n 执行概要为：{content}"}, usage.model_dump(), channel=self.identity + "_summary")
-                        
-                        self.context_manager.submit_sub_objective(resp_msg.task_summary, resp_msg.task_status, resources, dump=True)
+                        formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)                           
+                        self.append_message({"role": "user", "content": f"子目标处理结束，概况为：\n {formatted_subtask_step} \n 执行概要为：{content}"}, usage.model_dump(), channel=self.identity + "_summary", dump=True)
                         qa_snapshot = list(QA)
                         return content, usage, "success", self.tool_usage, qa_snapshot
                     except Exception as e:
                         self.logger.error(f"Submit exception: agent_id={self.agent_id} subtask={self.task_info.get('subtask_name')} err={e}")
                         print(f"submit {self.messages[-1]} \n error: {e}")
                         error_summary = f"Error when submitting task execution results, error message: {e}"
+                        current_subtask_index, current_subtask_step_index = self.context_manager._get_current_indices()
                         self.context_manager.submit_sub_objective(error_summary, "failed", {}, dump=True)
+                        current_subtask_step = self.context_manager.get_subtask_step(current_subtask_index, current_subtask_step_index)
+                        formatted_subtask_step = self.context_manager.get_formatted_subtask_step(current_subtask_step, current_subtask_index + 1, current_subtask_step_index + 1)
+                        self.append_message({"role": "user", "content": f"子目标处理结束，概况为：\n {formatted_subtask_step} \n 执行概要为：{content}"}, usage.model_dump(), channel=self.identity + "_summary", dump=True)
                         qa_snapshot = list(QA)
                         return content, usage, str(e), self.tool_usage, qa_snapshot
                 self.append_message(resp_msg.model_dump(), usage.model_dump(), channel=self.identity + "_main", dump=True)
@@ -180,14 +183,14 @@ class Agent:
                     tool_args["invoker_agent_id"] = self.agent_id
                     tool_args["in_channel"] = self.identity + "_main"
                     tool_args["out_channel"] = "user"
-                self.context_manager.record_tool_usage(self.agent_id, tool_name, dump=False)
+                self.context_manager.record_tool_usage(self.agent_id, tool_name, dump=True)
                 tool_result = self.tool_executer.call(tool_name, tool_args)
                 tool_messages = self.tool_executer.build_tool_result_messages(tool_name, tool_args, tool_result, tool_call.id)
                 for m in tool_messages:
-                    self.append_message(m, usage.model_dump(), channel=self.identity + "_main", dump=False)
+                    self.append_message(m, usage.model_dump(), channel=self.identity + "_main", dump=True)
                 if tool_name == "call_user":
                     QA.append({"agent": tool_args["query"], "user": tool_result})
-                    self.context_manager.set_active_qa("agent", QA, dump=False)
+                    self.context_manager.set_active_qa("agent", QA, dump=True)
         finally:
             self.context_manager.clear_active_qa("agent", dump=False)
             QA.clear()

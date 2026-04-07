@@ -736,7 +736,6 @@ class PlannerAgent:
             channel = self.identity + "_main"
         self.context_manager.dialogue_history[channel] = self.messages
 
-    # call user tool   
     @observe(
         name="planner",
         span_type="planner_span",
@@ -791,7 +790,7 @@ class PlannerAgent:
         try:
             while True:
                 self._prepare_context()
-                finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=tools, jsonSchema=self._schema_selector())
+                finish_reason, resp, usage = llm_call_json_schema(messages=self.messages, tools=tools if self.context_manager.get_planner_state() != PlannerState.CONTINUE else [], jsonSchema=self._schema_selector())
                 print(finish_reason)
                 if finish_reason == "error":
                     self.logger.error(f"LLM error: msg={getattr(resp, 'content', '')}")

@@ -534,8 +534,11 @@ class ContextManager:
         If agent is inactive, raise **ValueError**.
         If channel is not active, this function will **create a new channel** by add_active_subagent_channel.
         """
-        channels = self.active_subagents.get(agent_id)
-        if agent_id not in self.active_subagents or not channels:
+        if agent_id not in self.active_subagents:
+            print(f"Agent {agent_id} is not active.")
+            raise ValueError(f"Agent {agent_id} is not active.")
+        channels = self.active_subagents[agent_id]
+        if not channels:
             print(f"Agent {agent_id} is not active.")
             raise ValueError(f"Agent {agent_id} is not active.")
         if isinstance(channel, str):
@@ -626,6 +629,10 @@ class ContextManager:
             markdown_lines.append(f"    > **Resource References**:")
             for ref in sub_obj.resource_reference:
                 markdown_lines.append(f"      - [{ref.type}] {ref.description}: {ref.URI}")
+        
+        if hasattr(sub_obj, 'execution_summary') and sub_obj.execution_summary:
+            markdown_lines.append(f"    > **Execution Summary**:")
+            markdown_lines.append(f"      - {sub_obj.execution_summary}")
                 
         return "\n".join(markdown_lines)
 
@@ -663,8 +670,9 @@ class ContextManager:
         Add an active channel for the subagent.
         """
         if subagent_id in self.active_subagents:
-            if channel not in self.active_subagents[subagent_id]:
-                self.active_subagents[subagent_id].add(channel)
+            channels = self.active_subagents[subagent_id]
+            if channel not in channels:
+                channels.add(channel)
                 if dump:
                     self._auto_dump("add_active_subagent_channel", {"subagent_id": subagent_id, "channel": channel})
         else:
@@ -676,8 +684,9 @@ class ContextManager:
         Delete an active channel for the subagent.
         """
         if subagent_id in self.active_subagents:
-            if channel in self.active_subagents[subagent_id]:
-                self.active_subagents[subagent_id].remove(channel)
+            channels = self.active_subagents[subagent_id]
+            if channel in channels:
+                channels.remove(channel)
                 if dump:
                     self._auto_dump("del_active_subagent_channel", {"subagent_id": subagent_id, "channel": channel})
             else:
@@ -690,7 +699,7 @@ class ContextManager:
         Delete an active subagent and its all channels.
         """
         if subagent_id in self.active_subagents:
-            self.active_subagents[subagent_id].clear()
+            self.active_subagents.pop(subagent_id, None)
             if dump:
                 self._auto_dump("del_active_subagent", {"subagent_id": subagent_id})
         else:
@@ -702,16 +711,20 @@ class ContextManager:
         """
         print("===========================Refresh active subagents===========================")
         current_activate_agent = list(self.consistent_subagent_id)
-        available_resources: Dict[str, ResourceReference] = {}
+        available_resources: Dict[str, ResourceReference] = {
+            k: v for k, v in self.available_resources.items()
+            if getattr(v, "type", None) == "from_user"
+        }
         for task in resp.tasks:
             for sub_task in task.objective:
                 if sub_task.status == "completed":
-                    current_activate_agent.append(sub_task.agent_id)
-                    # res = {r.description: r for r in sub_task.resource_reference}
-                    # available_resources.update(res)
+                    if sub_task.agent_id is not None:
+                        current_activate_agent.append(sub_task.agent_id)
+                    res = {r.description: r for r in sub_task.resource_reference}
+                    available_resources.update(res)
         self.active_subagents = defaultdict(
             set,
-            {k: v for k, v in self.active_subagents.items() if k in current_activate_agent},
+            {k: set(v) for k, v in self.active_subagents.items() if k in current_activate_agent},
         )
         print(f"=====Active subagents=====: \n {self.active_subagents.keys()}")
         channel_ls = []
@@ -759,7 +772,6 @@ class ContextManager:
         self.last_dump_reason = reason
         self.last_dump_params = params
         self.last_dump_filepath = path
-        # print(f"Dumping context manager state to {path}\n Reason: {reason}\n Params: {params}\n")
         context = self._to_serializable(self._get_dump_state())
         with open(path, "w", encoding="utf-8") as f:
             json.dump(context, f, indent=2, ensure_ascii=False)
