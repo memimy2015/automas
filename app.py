@@ -6,7 +6,7 @@ PROMPT_VERSION_OVERRIDES = {
     "execution_agent.system_template": None,
     "execution_agent.submit_prompt": None,
     "agent_factory.system": None,
-    "Clarifier.system": None,
+    "clarifier.system": None,
     "summarizer.system": None,
     "planner.system_latest_instruction": None,
     "planner.schedule_init": None,
@@ -185,14 +185,6 @@ TEST_CASES["TEST_CASE_24"] = """
 
 
 def main():
-    # 调试：打印环境变量
-    print("=====Environment Variables=====")
-    print(f"AUTOMAS_WEB_MODE: {os.environ.get('AUTOMAS_WEB_MODE', 'NOT SET')}")
-    print(f"AUTOMAS_TASK_ID: {os.environ.get('AUTOMAS_TASK_ID', 'NOT SET')}")
-    print(f"AUTOMAS_TASK_DIR: {os.environ.get('AUTOMAS_TASK_DIR', 'NOT SET')}")
-    print(f"IS_DEBUG_ENABLED: {os.environ.get('IS_DEBUG_ENABLED', 'NOT SET')}")
-    print("================================")
-    
     parser = argparse.ArgumentParser()
     parser.add_argument("--load_from_file", type=str, required=False)
     parser.add_argument("--query", type=str, required=False)

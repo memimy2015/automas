@@ -50,7 +50,7 @@ class ClarifierAgent:
         self.logger = setup_logger("ClarifierAgent")
         # prompt = DEFAULT_INSTRUCTION.format(access_knowledgeDB())
         pm = get_prompt_manager()
-        prompt = pm.render("Clarifier.system", DEFAULT_INSTRUCTION, None, PROJECT_DIR=context_manager.get_project_dir(), current_date=datetime.now().strftime("%Y年%m月%d日"))
+        prompt = pm.render("clarifier.system", DEFAULT_INSTRUCTION, None, PROJECT_DIR=context_manager.get_project_dir(), current_date=datetime.now().strftime("%Y年%m月%d日"))
         self.notifier = notifier
         self.context_manager = context_manager
         agent_id, channel = self.context_manager.get_consistent_agent_identity("Clarifier")
