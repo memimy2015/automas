@@ -26,6 +26,13 @@
   - 获取方式：[Feedcoop 搜索接口](https://www.volcengine.com/docs/85508/1650263?lang=zh)
 
 ### 2. cozeloop - 上报数据
+- AUTOMAS_ENABLE_OBSERVE=0
+  - 作用：是否上报数据到云端
+
+- AUTOMAS_TRACE_PROVIDER=cozeloop
+  - 作用：指定 trace 数据上报提供方为 cozeloop  
+  - 影响范围：`execution/agent/agent.py` 的 trace 上报  
+  - 可选值：`cozeloop`、`promptpilot`
 
 - COZELOOP_API_TOKEN
   - 作用：cozeloop 上报数据的 API Token  
@@ -66,8 +73,9 @@
   - 默认值：`5`
 
 - AUTOMAS_API_BASE=http://127.0.0.1:8000
-  - 作用：Automas API Base URL  
+  - 作用：automas服务端接口地址
 
+### 6. 飞书相关
 - FEISHU_APP_ID
   - 作用：飞书应用 ID  
   - 影响范围：`channels/feishu.py` 的飞书 API 调用初始化  
@@ -78,8 +86,9 @@
   - 作用：飞书轮询间隔（秒）  
   - 影响范围：`channels/feishu.py` 的飞书 API 调用初始化  
 - FEISHU_SESSION_PATH
-  - 作用：飞书会话存储路径  
+  - 作用：飞书会话存储路径，本地文件路径  
   - 影响范围：`channels/feishu.py` 的飞书会话管理  
+  - 示例：/Users/bytedance/automas/storage/feishu_session.json
 - PYTHONHTTPSVERIFY=0
   - 作用：禁用 Python HTTPS 验证  
   - 影响范围：`channels/feishu.py` 的飞书 API 调用初始化  

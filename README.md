@@ -36,24 +36,28 @@ automas/
     cd automas
     ```
 
-2.  **安装依赖**：
-    ```bash
-    pip install -e .
-    ```
-
-3.  **环境配置**：
-    您需要配置 LLM 凭证。请设置以下环境变量：
-    ```bash
-    export ARK_API_KEY="your_volcengine_api_key"
-    export MODEL="your_model_endpoint_id"
-    ```
-
 ## 💻 使用方法
-
-运行主程序启动 Agent：
-
+1. 参考 [envs.md](envs.md) 配置环境变量。
+2. 按顺序执行以下命令
 ```bash
-python3 app.py
+source env/env.sh
+pip install -r requirements.txt
+sh start.sh
+```
+3. 当看到以下输出时表示启动成功
+```bash
+Serving HTTP on :: port 5173 (http://[::]:5173/) ...
+[InputBuffer] Register consumer started
+INFO:     Started server process [34738]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+```
+4. 启动飞书插件
+则需要配置环境变量 `FEISHU_APP_ID` 和 `FEISHU_APP_SECRET`。
+启动命令调整为：
+```bash
+sh start.sh --feishu
 ```
 
 ### 示例
@@ -66,14 +70,6 @@ Agent 的执行流程：
 2.  决策调用 `command` 工具并执行 `ls -l`。
 3.  在持久化 Shell 中执行命令。
 4.  分析输出并向您反馈文件列表。
-
-## 🔧 开发指南
-
-### 添加新工具
-
-若要扩展 Agent 的能力：
-1.  在 `resources/tools/` 中实现您的工具逻辑。
-2.  在 `resources/tools/tool_executer.py` 中注册新工具，将其 Schema 和实现添加到 `tools_desc_map` 中。
 
 ### 日志
 
