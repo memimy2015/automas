@@ -1,6 +1,6 @@
 from resources.tools.progress_operation import update_progress
 from resources.tools.persistent_shell import PersistentShell
-from resources.tools.file_operation import write_file, read_file, load_full_skill_doc
+from resources.tools.file_operation import write_file, read_file, load_full_skill_description
 from resources.tools.proactive_query import call_user
 import json
 import os
@@ -77,11 +77,11 @@ class ToolExecuter:
             }
         }
 
-        self.tools_desc_map["load_full_skill_doc"] = {
+        self.tools_desc_map["load_full_skill_description"] = {
             "type": "function",
             "function": {
-                "name": "load_full_skill_doc",
-                "description": "读取技能文件 skills.md 的完整内容",
+                "name": "load_full_skill_description",
+                "description": "读取技能文件描述 skills.md 的完整内容",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -159,8 +159,8 @@ class ToolExecuter:
             return write_file(args["file_path"], args["content"], args.get("mode", "write"))
         elif tool_name == "read_file":
             return read_file(args["file_path"])
-        elif tool_name == "load_full_skill_doc":
-            return load_full_skill_doc(args["file_path"])
+        elif tool_name == "load_full_skill_description":
+            return load_full_skill_description(args["file_path"])
         elif tool_name == "update_progress":
             return update_progress(args["info"])
         # elif tool_name == "submit":

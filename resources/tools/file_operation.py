@@ -449,7 +449,7 @@ def write_file(file_path, content, mode: str = "write"):
         logger.error(error_msg)
         return error_msg
 
-def load_full_skill_doc(file_path):
+def load_full_skill_description(file_path):
     """
     Reads the content of a skills.md file.
     
