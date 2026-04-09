@@ -179,7 +179,8 @@ tmp_dump*.json
 essay/
 
 # cleanup
-# whole_cleanup.sh
+cleanup.sh
+whole_cleanup.sh
 test.py
 test*.py
 pp_test.py
@@ -198,5 +199,6 @@ testcase_results/
 output/
 traces/
 pdf2img.py
+pdf2imgs.py
 storage/tasks/
 tmp_evaluate/
