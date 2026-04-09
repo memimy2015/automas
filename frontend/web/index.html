@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Automas · 智能体工作台</title>
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="智能体自动工作系统 · 拟人化中控台" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M12 2.75c4.97 0 9 4.03 9 9 0 4.97-4.03 9-9 9-4.97 0-9-4.03-9-9 0-4.97 4.03-9 9-9Z"
+                stroke="currentColor"
+                stroke-width="1.25"
+              />
+              <path
+                d="M8.5 14.5c2.2 1.6 4.8 1.6 7 0"
+                stroke="currentColor"
+                stroke-width="1.25"
+                stroke-linecap="round"
+              />
+              <path
+                d="M9 10.2h.01M15 10.2h.01"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </div>
+          <div class="brand-text">
+            <div class="brand-title">Automas</div>
+            <div class="brand-sub">智能体自动工作系统</div>
+          </div>
+        </div>
+
+        <div class="top-actions">
+          <div class="status" id="status">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="status-text" id="statusText">正在唤醒智能体…</span>
+          </div>
+
+          <div class="pill" id="taskIdPill">任务：—</div>
+          <div class="pill" id="clock">--:--:--</div>
+
+          <button class="btn" id="refreshBtn" type="button">
+            <span class="btn-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M20 12a8 8 0 0 1-14.62 4.29"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M4 12A8 8 0 0 1 18.62 7.71"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M18.5 4.5v4h-4"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M5.5 19.5v-4h4"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </span>
+            刷新
+          </button>
+
+          <button class="btn ghost" id="newTaskBtn" type="button">新建任务</button>
+          <button class="btn ghost" id="jsonBtn" type="button">原始数据</button>
+        </div>
+      </header>
+
+      <main class="layout submit-layout" id="submitSection">
+        <section class="card submit-card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">提交新任务</div>
+              <div class="card-sub">输入任务目标，提交后自动进入任务状态看板</div>
+            </div>
+          </div>
+          <div class="card-bd">
+            <form class="submit-form" id="taskForm">
+              <label class="form-label" for="taskQuery">任务描述</label>
+              <textarea
+                class="form-textarea"
+                id="taskQuery"
+                name="taskQuery"
+                placeholder="例如：生成一份关于AI发展趋势的PPT"
+                rows="5"
+                required
+              ></textarea>
+              <div class="form-row">
+                <button class="btn primary" type="submit" id="taskSubmitBtn">提交任务</button>
+                <div class="hint" id="taskFormHint">提交后将自动跳转到任务状态展示页</div>
+              </div>
+              <div class="form-msg" id="taskFormMsg"></div>
+            </form>
+          </div>
+        </section>
+      </main>
+
+      <main class="layout hidden" id="statusPage">
+        <section class="card live" id="liveSection">
+          <div class="card-hd">
+            <div class="live-head">
+              <div class="avatar sm">
+                <img
+                  id="agentAvatarImg"
+                  alt="agent avatar"
+                  decoding="async"
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                />
+                <span class="avatar-fallback" id="agentAvatarFallback">A</span>
+              </div>
+              <div class="live-head-meta">
+                <div class="live-title">
+                  <span class="live-badge">LIVE</span>
+                  <span id="agentName">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="live-right">
+              <!-- <div class="pill soft" id="liveSyncAt">上次同步：—</div> -->
+              <div class="chip soft" id="agentMood">专注工作中...</div>
+            </div>
+          </div>
+
+          <div class="card-bd">
+            <div class="live-grid">
+              <div class="live-left">
+                <!-- <div class="live-metrics">
+                  <div class="metric">
+                    <div class="metric-k">刷新倒计时</div>
+                    <div class="metric-v" id="liveCountdown">—</div>
+                  </div>
+                  <div class="metric">
+                    <div class="metric-k">任务</div>
+                    <div class="metric-v" id="taskId">—</div>
+                  </div>
+                  <div class="metric">
+                    <div class="metric-k">状态</div>
+                    <div class="metric-v" id="missionChip">—</div>
+                  </div>
+                </div> -->
+
+                <!-- <div class="flow">
+                  <div class="flow-bar"><div class="flow-in" id="liveFlow"></div></div>
+                  <div class="flow-text" id="liveHint">智能体正在思考下一步…</div>
+                </div> -->
+
+                <div class="kv flat">
+                  <div class="k">角色设定</div>
+                  <div class="v" id="agentSetting">—</div>
+                </div>
+                <div class="kv flat">
+                  <div class="k">任务说明</div>
+                  <div class="v" id="agentSpec">—</div>
+                </div>
+              </div>
+
+              <div class="live-right-pane">
+                <div class="section-title">执行轨迹</div>
+                <div class="live-tl scroll">
+                  <div class="timeline" id="execTimeline"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card chat">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">对话流</div>
+              <div class="card-sub" id="chatSub">—</div>
+            </div>
+            <!-- <div class="pill soft" id="hint">—</div> -->
+          </div>
+          <div class="card-bd scroll" id="chatList"></div>
+        </section>
+
+        <section class="card plan" id="planSection">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">计划中枢</div>
+              <div class="card-sub" id="overallGoal">—</div>
+            </div>
+            <!-- <button class="btn ghost sm" id="refreshBtn2" type="button">立即同步</button> -->
+          </div>
+          <div class="card-bd scroll">
+            <div class="section-title">任务拆解</div>
+            <div class="task-list" id="taskList"></div>
+            <!-- <div class="section-title" style="margin-top: 18px">下一步</div> -->
+            <!-- <div class="next-step" id="nextStep">—</div> -->
+          </div>
+        </section>
+
+        <section class="card summary" id="summarySection">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">总结</div>
+              <div class="card-sub" id="generatedAt">—</div>
+            </div>
+            <div class="pill soft" id="sourceTag">—</div>
+          </div>
+          <div class="card-bd">
+            <div class="summary-text" id="summaryText">—</div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <aside class="modal" id="inputModal" aria-hidden="true">
+      <div class="modal-backdrop" id="inputBackdrop"></div>
+      <div class="modal-panel">
+        <div class="modal-hd">
+          <div class="modal-title">需要你补充输入</div>
+          <button class="btn ghost" id="inputCancelBtn" type="button"></button>
+        </div>
+        <div class="modal-bd">
+          <div class="modal-question" id="pendingQuestion">—</div>
+          <textarea
+            class="form-textarea"
+            id="pendingInput"
+            rows="4"
+            placeholder="请输入你的回复"
+          ></textarea>
+          <div class="form-row">
+            <button class="btn primary" id="inputSubmitBtn" type="button">提交回复</button>
+            <div class="hint" id="pendingHint">提交后任务会继续执行</div>
+          </div>
+          <div class="form-msg" id="pendingMsg"></div>
+        </div>
+      </div>
+    </aside>
+
+    <aside class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-backdrop" id="drawerBackdrop"></div>
+      <div class="drawer-panel">
+        <div class="drawer-hd">
+          <div class="drawer-title">原始数据</div>
+          <button class="btn ghost" id="closeDrawer" type="button">关闭</button>
+        </div>
+        <pre class="drawer-code scroll" id="rawJson"></pre>
+      </div>
+    </aside>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

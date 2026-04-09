@@ -16,6 +16,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+output/
+tmp/
 parts/
 sdist/
 var/
@@ -154,6 +156,11 @@ cython_debug/
 .idea/
 *.swp
 *.swo
+.trae/
+.test.py
+
+# test
+coze_test.py
 
 # macOS
 .DS_Store
@@ -161,3 +168,35 @@ cython_debug/
 # Logs
 *.log
 logs/
+agent_log/
+
+
+# dump file
+dump/
+tmp_dump*.json
+
+# essay
+essay/
+
+# cleanup
+# whole_cleanup.sh
+test.py
+test*.py
+pp_test.py
+bu_test.py
+agentic_browser_use.py
+# local debug
+.dbg/
+debug.md
+
+# trash files
+ARCHITECTURE.md
+
+# large local resources/results
+testcase_resources/
+testcase_results/
+output/
+traces/
+pdf2img.py
+storage/tasks/
+tmp_evaluate/

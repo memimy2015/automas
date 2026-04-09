@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+cozeloop
+openai
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+lark-oapi
+Flask
+openinference-instrumentation-openai
